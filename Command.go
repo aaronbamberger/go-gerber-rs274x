@@ -1,4 +1,4 @@
-package gerber-rs274x
+package gerber_rs274x
 
 type ParameterCode int
 type ApertureType int
