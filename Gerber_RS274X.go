@@ -8,7 +8,11 @@ import (
 	"fmt"
 	"strings"
 	"strconv"
+	"regexp"
 )
+
+var coordDataBlockRegex *regexp.Regexp
+var parameterOrDataBlockRegex *regexp.Regexp
 
 type ParseState int
 
@@ -27,7 +31,55 @@ type CoordinateFormat struct {
 	isSet bool
 }
 
+func init() {
+	// We compile all regular expressions we'll need for parsing into package global variables, so that we only have to compile
+	// them once, not every time they are needed
+
+	coordDataBlockRegex = regexp.MustCompile("X?(-?[[:digit:]]*)Y?(-?[[:digit:]]*)I?(-?[[:digit:]]*)J?(-?[[:digit:]]*)")
+	
+	// Regular expression that matches either a parameter block in between "%" characters, or a data block ended by a "*" character
+	// NOTE: The parameter matching part is tricky, since parameters can have multiple embedded data blocks (meaning multiple embedded "*" characters)
+	// but we still want to match the optional "*" character at the end of the parameter block but not capture it, so we use a non-greedy "*" matching clause
+	// inside the capturing expression, but a greedy "*" matching clause at the end of the parameter matching section
+	parameterOrDataBlockRegex = regexp.MustCompile("(?:%((?:[[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*\\**?)*)\\*?%)|(?:([[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*)\\*)")
+}
+
 func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
+	scanner := bufio.NewScanner(in)
+	scanner.Split(bufio.ScanLines)
+	fileString := ""
+	for scanner.Scan() {
+		fileString += scanner.Text()
+	}
+	
+	if err := scanner.Err(); err != nil {
+		return nil,fmt.Errorf("Error encountered while reading file: %v\n", err)
+	} 
+	
+	results := parameterOrDataBlockRegex.FindAllStringSubmatch(fileString, -1)
+	
+	// Set up the variables we'll need for parsing
+	// We'll start with a default size of 100 for now
+	// The slice will grow as necessary during parsing
+	parsedFile = make([]Command, 0, 100)
+	var currentCommand Command
+	var coordFormat CoordinateFormat
+	
+	for index,submatch := range results {
+		if len(submatch) != 3 {
+			return nil,fmt.Errorf("Error (token %d): Parse error on command %v\n", index, submatch)
+		}
+		
+		if len(submatch[1]) > 0 {
+			fmt.Printf("Token %d, Parsed parameter: %s\n", index, submatch[1])
+		} else if len(submatch[2]) > 0 {
+			fmt.Printf("Token %d, Parsed data block: %s\n", index, submatch[2])
+		} else {
+			return nil,fmt.Errorf("Error (token %d): Not parameter or data block: %v\n", index, submatch)
+		}
+	}
+
+	/*
 	reader := (*AsciiReader)(bufio.NewReader(in))
 	
 	// Set up the variables we'll need for parsing
@@ -68,6 +120,7 @@ func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
 			}
 		}
 	}
+	*/
 	
 	return nil,nil
 }
@@ -244,6 +297,8 @@ func parseCoordinateDataBlock(interpolation* Interpolation, coordFormat* Coordin
 			
 		}
 	}
+	
+	return nil,nil
 }
 
 func parseCoordinates(interpolation* Interpolation, coordFormat* CoordinateFormat, reader* AsciiReader) (*Interpolation, error) {
@@ -272,6 +327,8 @@ func parseCoordinates(interpolation* Interpolation, coordFormat* CoordinateForma
 			default:
 		}
 	}
+	
+	return nil,nil
 }
 
 func readCoordinate(coordFormat* CoordinateFormat, reader* AsciiReader) (float64, error) {
