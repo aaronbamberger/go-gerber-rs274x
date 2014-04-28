@@ -13,6 +13,8 @@ import (
 
 var coordDataBlockRegex *regexp.Regexp
 var parameterOrDataBlockRegex *regexp.Regexp
+var dataBlockRegex *regexp.Regexp
+var nonCommentDataBlockRegex *regexp.Regexp
 
 type ParseState int
 
@@ -35,16 +37,20 @@ func init() {
 	// We compile all regular expressions we'll need for parsing into package global variables, so that we only have to compile
 	// them once, not every time they are needed
 
-	coordDataBlockRegex = regexp.MustCompile("X?(-?[[:digit:]]*)Y?(-?[[:digit:]]*)I?(-?[[:digit:]]*)J?(-?[[:digit:]]*)")
+	coordDataBlockRegex = regexp.MustCompile(`(?:X(?P<xCoord>-?[[:digit:]]*))?(?:Y(?P<yCoord>-?[[:digit:]]*))?(?:I(?P<iOffset>-?[[:digit:]]*))?(?:J(?P<jOffset>-?[[:digit:]]*))?`)
 	
 	// Regular expression that matches either a parameter block in between "%" characters, or a data block ended by a "*" character
 	// NOTE: The parameter matching part is tricky, since parameters can have multiple embedded data blocks (meaning multiple embedded "*" characters)
 	// but we still want to match the optional "*" character at the end of the parameter block but not capture it, so we use a non-greedy "*" matching clause
 	// inside the capturing expression, but a greedy "*" matching clause at the end of the parameter matching section
-	parameterOrDataBlockRegex = regexp.MustCompile("(?:%((?:[[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*\\**?)*)\\*?%)|(?:([[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*)\\*)")
+	parameterOrDataBlockRegex = regexp.MustCompile("(?:%(?P<paramBlock>(?:[[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*\\**?)*)\\*?%)|(?:(?P<dataBlock>[[:alnum:] -\\$&-\\)\\+-/:<-@[-`{-~]*)\\*)")
+	
+	dataBlockRegex = regexp.MustCompile(`(?:(?P<fnLetter>G|M)(?P<fnCode>[[:digit:]]{1,2}))?(?P<restOfBlock>[[:alnum:][:punct:] ]+)`)
+	
+	nonCommentDataBlockRegex = regexp.MustCompile(`(?:X(?P<xCoord>-?[[:digit:]]*))?(?:Y(?P<yCoord>-?[[:digit:]]*))?(?:I(?P<iOffset>-?[[:digit:]]*))?(?:J(?P<jOffset>-?[[:digit:]]*))?(?:D(?P<dCode>[[:digit:]]{1,2}))?`)
 }
 
-func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
+func ParseGerberFile(in io.Reader) (parsedFile []*Command, err error) {
 	scanner := bufio.NewScanner(in)
 	scanner.Split(bufio.ScanLines)
 	fileString := ""
@@ -61,9 +67,9 @@ func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
 	// Set up the variables we'll need for parsing
 	// We'll start with a default size of 100 for now
 	// The slice will grow as necessary during parsing
-	parsedFile = make([]Command, 0, 100)
-	var currentCommand Command
-	var coordFormat CoordinateFormat
+	parsedFile = make([]*Command, 0, 100)
+	//var currentCommand Command
+	//var coordFormat CoordinateFormat
 	
 	for index,submatch := range results {
 		if len(submatch) != 3 {
@@ -71,9 +77,11 @@ func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
 		}
 		
 		if len(submatch[1]) > 0 {
-			fmt.Printf("Token %d, Parsed parameter: %s\n", index, submatch[1])
+			//fmt.Printf("Token %d, Parsed parameter: %s\n", index, submatch[1])
 		} else if len(submatch[2]) > 0 {
-			fmt.Printf("Token %d, Parsed data block: %s\n", index, submatch[2])
+			if _,err := parseDataBlock(submatch[2]); err != nil {
+				//fmt.Printf("Parse Error: %s\n", err.Error())
+			}
 		} else {
 			return nil,fmt.Errorf("Error (token %d): Not parameter or data block: %v\n", index, submatch)
 		}
@@ -121,6 +129,43 @@ func ParseGerberFile(in io.Reader) (parsedFile []Command, err error) {
 		}
 	}
 	*/
+	
+	return nil,nil
+}
+
+func parseDataBlock(dataBlock string) (*DataBlock, error) {
+	parsedDataBlock := dataBlockRegex.FindAllStringSubmatch(dataBlock, -1)
+	
+	// First, make sure we captured the number of subexpressions we expected
+	if len(parsedDataBlock) != 1 {
+		fmt.Printf("Parse error: %v\n", parsedDataBlock)
+		return nil,fmt.Errorf("Unable to parse data block %s: code 1", dataBlock)
+	} else if len(parsedDataBlock[0]) != 4 {
+		return nil,fmt.Errorf("Unable to parse data block %s: code 2", dataBlock)
+	}
+	
+	if parsedDataBlock[0][1] == "G" && (parsedDataBlock[0][2] == "04" || parsedDataBlock[0][2] == "4") {
+		// Handle comments as a special case
+		fmt.Printf("Parsed comment: %s\n", parsedDataBlock[0][3])
+		return nil,nil
+	} else {
+		// Otherwise, finish processing the data block
+		return parseNonCommentBlock(parsedDataBlock[0][1], parsedDataBlock[0][2], parsedDataBlock[0][3])
+	}
+}
+
+func parseNonCommentBlock(fnLetter string, fnCode string, restOfBlock string) (*DataBlock, error) {
+	parsedDataBlock := nonCommentDataBlockRegex.FindAllStringSubmatch(restOfBlock, -1)
+	
+	// First, make sure we captured the number of subexpressions we expected
+	if len(parsedDataBlock) != 1 {
+		fmt.Printf("Parse error: %v\n", parsedDataBlock)
+		return nil,fmt.Errorf("Unable to parse non-comment data block %s: code 1", restOfBlock)
+	} else if len(parsedDataBlock[0]) != 6 {
+		return nil,fmt.Errorf("Unable to parse non-comment data block %s: code 2", restOfBlock)
+	}
+	
+	fmt.Printf("Parsed non-comment data block: FN: %s, Code: %s, X: %s, Y: %s, I: %s, J: %s, D: %s\n", fnLetter, fnCode, parsedDataBlock[0][1], parsedDataBlock[0][2], parsedDataBlock[0][3], parsedDataBlock[0][4], parsedDataBlock[0][5]) 
 	
 	return nil,nil
 }
