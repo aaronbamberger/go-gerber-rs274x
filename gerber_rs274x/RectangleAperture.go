@@ -1,6 +1,9 @@
 package gerber_rs274x
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ajstarks/svgo"
+)
 
 type RectangleAperture struct {
 	xSize float64
@@ -18,6 +21,10 @@ func (rectangle* RectangleAperture) GetHole() Hole {
 
 func (rectangle* RectangleAperture) SetHole(hole Hole) {
 	rectangle.Hole = hole
+}
+
+func (rectangle* RectangleAperture) DrawApertureSVG(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
+	return nil
 }
 
 func (rectangle* RectangleAperture) String() string {

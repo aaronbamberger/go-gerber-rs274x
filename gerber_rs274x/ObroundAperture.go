@@ -1,6 +1,9 @@
 package gerber_rs274x
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ajstarks/svgo"
+)
 
 type ObroundAperture struct {
 	xSize float64
@@ -18,6 +21,10 @@ func (obround* ObroundAperture) GetHole() Hole {
 
 func (obround* ObroundAperture) SetHole(hole Hole) {
 	obround.Hole = hole
+}
+
+func (obround* ObroundAperture) DrawApertureSVG(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
+	return nil
 }
 
 func (obround* ObroundAperture) String() string {

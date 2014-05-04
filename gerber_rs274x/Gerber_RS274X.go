@@ -51,6 +51,7 @@ type GraphicsState struct {
 	yImageSize int
 	fileComplete bool
 	coordinateNotation CoordinateNotation
+	drawPrecision float64
 	
 	// As we encounter aperture definitions, we save them
 	// for later use while drawing
@@ -62,6 +63,11 @@ type GraphicsState struct {
 	quadrantModeSet bool
 	interpolationModeSet bool
 	coordinateNotationSet bool
+}
+
+func (gfxState *GraphicsState) updateCurrentCoordinate(newX float64, newY float64) {
+	gfxState.currentX = newX
+	gfxState.currentY = newY
 }
 
 func init() {
@@ -143,8 +149,8 @@ func ParseGerberFile(in io.Reader) (parsedFile []DataBlock, err error) {
 
 func GenerateSVG(out io.Writer, parsedFile []DataBlock) error {
 	
-	width := 1000
-	height := 1000
+	width := 4000
+	height := 2000
 	
 	// Set up the initial graphics state
 	gfxState := newGraphicsState(width, height)

@@ -1,6 +1,9 @@
 package gerber_rs274x
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ajstarks/svgo"
+)
 
 type MacroAperture struct {
 	macroName string
@@ -16,6 +19,10 @@ func (macro* MacroAperture) GetHole() Hole {
 
 func (macro* MacroAperture) SetHole(hole Hole) {
 	
+}
+
+func (macro* MacroAperture) DrawApertureSVG(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
+	return nil
 }
 
 func (macro* MacroAperture) String() string {

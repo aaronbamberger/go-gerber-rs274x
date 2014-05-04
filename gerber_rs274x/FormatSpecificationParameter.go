@@ -2,6 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
+	"math"
 	"github.com/ajstarks/svgo"
 )
 
@@ -26,6 +27,7 @@ func (formatSpecification *FormatSpecificationParameter) ProcessDataBlockSVG(svg
 	
 	gfxState.coordinateNotation = formatSpecification.coordinateNotation
 	gfxState.coordinateNotationSet = true
+	gfxState.drawPrecision = 1.0 / math.Pow10(formatSpecification.xNumDecimals)
 
 	return nil
 }

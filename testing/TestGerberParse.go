@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"gerber_rs274x"
+	"path/filepath"
 )
 
 func main() {
@@ -12,33 +13,30 @@ func main() {
 		os.Exit(1)
 	}
 	
-	if file,err := os.Open(os.Args[1]); err != nil {
-		fmt.Printf("Error opening given file %s: %v\n", os.Args[1], err)
+	if inputFile,err := os.Open(os.Args[1]); err != nil {
+		fmt.Printf("Error opening input file %s: %s\n", os.Args[1], err.Error())
 		os.Exit(2)
 	} else {
 		
-		if _,err := gerber_rs274x.ParseGerberFile(file); err != nil {
-			file.Close()
+		if parsedFile,err := gerber_rs274x.ParseGerberFile(inputFile); err != nil {
+			inputFile.Close()
 			fmt.Printf("Error parsing gerber file: %v\n", err)
 			os.Exit(3)
-		}
+		} else {
+			inputFile.Close()
 		
-		file.Close()
+			if outputFile,err := os.Create(filepath.Base(os.Args[1]) + ".svg"); err != nil {
+				fmt.Printf("Error opening output file %s: %s\n", filepath.Base(os.Args[1]) + ".svg", err.Error())
+				os.Exit(4) 
+			} else {
+				if err := gerber_rs274x.GenerateSVG(outputFile, parsedFile); err != nil {
+					outputFile.Close()
+					fmt.Printf("Error generating SVG file: %s\n", err.Error())
+					os.Exit(5)
+				} else {
+					outputFile.Close()
+				}
+			}
+		}
 	}
-	
-	/*
-	//input := "";
-	
-	//regex := regexp.MustCompile("X?(-?[[:digit:]]*)Y?(-?[[:digit:]]*)I?(-?[[:digit:]]*)J?(-?[[:digit:]]*)")
-	
-	
-	
-	results := regex.FindAllStringSubmatch(input, -1)
-	
-	fmt.Printf("Results Length: %d\n", len(results));
-	for index, submatch := range results {
-		fmt.Printf("Results(%d) Length: %d\n", index, len(submatch));
-	}
-	fmt.Printf("Results: %v\n", results)
-	*/
 }

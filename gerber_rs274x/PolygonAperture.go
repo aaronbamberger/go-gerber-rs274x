@@ -1,6 +1,9 @@
 package gerber_rs274x
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/ajstarks/svgo"
+)
 
 type PolygonAperture struct {
 	outerDiameter float64
@@ -19,6 +22,10 @@ func (polygon* PolygonAperture) GetHole() Hole {
 
 func (polygon* PolygonAperture) SetHole(hole Hole) {
 	polygon.Hole = hole
+}
+
+func (polygon* PolygonAperture) DrawApertureSVG(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
+	return nil
 }
 
 func (polygon* PolygonAperture) String() string {

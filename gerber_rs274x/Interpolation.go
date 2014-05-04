@@ -38,50 +38,91 @@ func (interpolation *Interpolation) ProcessDataBlockSVG(svg *svg.SVG, gfxState *
 	if interpolation.opCodeValid {
 		switch interpolation.opCode {
 			case INTERPOLATE_OPERATION:
+				newX,newY := getNewCoordinate(interpolation, gfxState)
 				
-			
+				fmt.Printf("Linear interpolation from (%f %f) to (%f %f)\n", gfxState.currentX, gfxState.currentY, newX, newY)
+				
+				if (newX == gfxState.currentX) {
+					// Vertical line
+					for y := gfxState.currentY; y <= newY; y += (gfxState.drawPrecision * 100.0) {
+						if err := drawAperture(svg, gfxState, newX, y); err != nil {
+							return err
+						}
+					}
+				} else if (newY == gfxState.currentY) {
+					// Horizontal line
+					for x := gfxState.currentX; x <= newX; x += (gfxState.drawPrecision * 100.0) {
+						if err := drawAperture(svg, gfxState, x, newY); err != nil {
+							return err
+						}
+					}
+				} else {
+					// Any other line
+				}
+				
+				gfxState.updateCurrentCoordinate(newX, newY)
+				
 			case MOVE_OPERATION:
-				updateCurrentCoordinate(interpolation, gfxState)
+				newX,newY := getNewCoordinate(interpolation, gfxState)
+				gfxState.updateCurrentCoordinate(newX, newY)
 			
 			case FLASH_OPERATION:
-				updateCurrentCoordinate(interpolation, gfxState)
-			
-				if gfxState.apertureSet {
-					return drawAperture(svg, gfxState.apertures[gfxState.currentAperture], gfxState.currentX, gfxState.currentY)
-				} else {
-					return fmt.Errorf("Attempt to flash aperture before current aperture has been defined")
+				newX,newY := getNewCoordinate(interpolation, gfxState)
+				gfxState.updateCurrentCoordinate(newX, newY)
+				return drawAperture(svg, gfxState, gfxState.currentX, gfxState.currentY)
+		}
+	}
+	
+	return nil
+}
+
+func drawAperture(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
+
+	if !gfxState.apertureSet {
+		return fmt.Errorf("Attempt to use aperture before current aperture has been defined")
+	}
+	
+	gfxState.apertures[gfxState.currentAperture].DrawApertureSVG(svg, gfxState, x, y)
+
+	return nil
+}
+
+func getNewCoordinate(interpolation *Interpolation, gfxState *GraphicsState) (newX float64, newY float64) {
+
+	switch gfxState.currentInterpolationMode {
+		case LINEAR_INTERPOLATION:
+			if interpolation.xValid {
+				switch gfxState.coordinateNotation {
+					case ABSOLUTE_NOTATION:
+						newX = interpolation.x
+					
+					case INCREMENTAL_NOTATION:
+						newX = gfxState.currentX + interpolation.x
 				}
-		}
+			} else {
+				newX = gfxState.currentX
+			}
+			
+			if interpolation.yValid {
+				switch gfxState.coordinateNotation {
+					case ABSOLUTE_NOTATION:
+						newY = interpolation.y
+					
+					case INCREMENTAL_NOTATION:
+						newY = gfxState.currentY + interpolation.y
+				}
+			} else {
+				newY = gfxState.currentY
+			}
+			
+		case CIRCULAR_INTERPOLATION_CLOCKWISE:
+			
+		
+		case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+		
 	}
 	
-	return nil
-}
-
-func updateCurrentCoordinate(interpolation *Interpolation, gfxState *GraphicsState) {
-	if interpolation.xValid {
-		switch gfxState.coordinateNotation {
-			case ABSOLUTE_NOTATION:
-				gfxState.currentX = interpolation.x
-			
-			case INCREMENTAL_NOTATION:
-				gfxState.currentX += interpolation.x
-		}
-	}
-	
-	if interpolation.yValid {
-		switch gfxState.coordinateNotation {
-			case ABSOLUTE_NOTATION:
-				gfxState.currentY = interpolation.y
-			
-			case INCREMENTAL_NOTATION:
-				gfxState.currentY += interpolation.y
-		}
-	}
-}
-
-func drawAperture(svg *svg.SVG, aperture Aperture, x float64, y float64) error {
-
-	return nil
+	return
 }
 
 func (interpolation *Interpolation) String() string {
