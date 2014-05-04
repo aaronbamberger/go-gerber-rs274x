@@ -4,8 +4,8 @@ import (
 	"io"
 	"bufio"
 	"fmt"
-	"strconv"
 	"regexp"
+	"github.com/ajstarks/svgo"
 )
 
 var coordDataBlockRegex *regexp.Regexp
@@ -13,6 +13,9 @@ var parameterOrDataBlockRegex *regexp.Regexp
 var dataBlockRegex *regexp.Regexp
 var dCodeDataBlockRegex *regexp.Regexp
 var coordinateDataBlockRegex *regexp.Regexp
+var fsParameterRegex *regexp.Regexp
+var srParameterRegex *regexp.Regexp
+var adParameterRegex *regexp.Regexp
 
 type ParseState int
 
@@ -21,7 +24,6 @@ const (
 	PARSING_FUNCTION
 	PARSING_COORDINATE_DATA
 	PARSING_PARAMETER
-	
 )
 
 type CoordinateFormat struct {
@@ -29,6 +31,37 @@ type CoordinateFormat struct {
 	numDecimals int
 	suppressTrailingZeros bool
 	isSet bool
+}
+
+type ParseEnvironment struct {
+	coordFormat CoordinateFormat
+	unitsSet bool
+	aperturesDefined map[int]bool
+}
+
+type GraphicsState struct {
+	currentAperture int
+	currentQuadrantMode FunctionCode
+	currentInterpolationMode FunctionCode
+	currentX float64
+	currentY float64
+	currentLevelPolarity Polarity
+	regionModeOn bool
+	xImageSize int
+	yImageSize int
+	fileComplete bool
+	coordinateNotation CoordinateNotation
+	
+	// As we encounter aperture definitions, we save them
+	// for later use while drawing
+	apertures map[int]Aperture
+	
+	// Some of these default to undefined,
+	// so we also need to keep track of when they get defined
+	apertureSet bool
+	quadrantModeSet bool
+	interpolationModeSet bool
+	coordinateNotationSet bool
 }
 
 func init() {
@@ -48,9 +81,15 @@ func init() {
 	dCodeDataBlockRegex = regexp.MustCompile(`(?P<restOfBlock>[XYIJ\-[:digit:]]*)(?:D(?P<dCode>[[:digit:]]{1,2}))?`)
 	
 	coordinateDataBlockRegex = regexp.MustCompile(`(?:X(?P<xCoord>-?[[:digit:]]*))?(?:Y(?P<yCoord>-?[[:digit:]]*))?(?:I(?P<iOffset>-?[[:digit:]]*))?(?:J(?P<jOffset>-?[[:digit:]]*))?`)
+	
+	fsParameterRegex = regexp.MustCompile(`(?P<zeroOmissionMode>L|T)(?P<coordinateNotation>A|I)X(?P<xIntPositions>[[:digit:]]{1})(?P<xDecPositions>[[:digit:]]{1})Y(?P<yIntPositions>[[:digit:]]{1})(?P<yDecPositions>[[:digit:]]{1})`)
+	
+	srParameterRegex = regexp.MustCompile(`(?:X(?P<xRepeat>[[:digit:]]+))?(?:Y(?P<yRepeat>[[:digit:]]+))?(?:I(?P<iStep>[[:digit:]]+\.?[[:digit:]]*))?(?:J(?P<jStep>[[:digit:]]+\.?[[:digit:]]*))?`)
+	
+	adParameterRegex = regexp.MustCompile(`D(?P<dCode>[[:digit:]]*)(?P<apertureType>[[:alnum:]_\+\-/\!\?<>"'\(\){}\.\\\|\&@# ]+),?(?P<modifiers>[[:digit:]\.X]*)`)
 }
 
-func ParseGerberFile(in io.Reader) (parsedFile []*Command, err error) {
+func ParseGerberFile(in io.Reader) (parsedFile []DataBlock, err error) {
 	scanner := bufio.NewScanner(in)
 	scanner.Split(bufio.ScanLines)
 	fileString := ""
@@ -67,11 +106,8 @@ func ParseGerberFile(in io.Reader) (parsedFile []*Command, err error) {
 	// Set up the variables we'll need for parsing
 	// We'll start with a default size of 100 for now
 	// The slice will grow as necessary during parsing
-	parsedFile = make([]*Command, 0, 100)
-	//var currentCommand Command
-	//var coordFormat CoordinateFormat
-	
-	dataBlocks := make([]DataBlock, 0, 100)
+	parseEnv := newParseEnv()
+	parsedFile = make([]DataBlock, 0, 100)
 	
 	for index,submatch := range results {
 		if len(submatch) != 3 {
@@ -79,259 +115,88 @@ func ParseGerberFile(in io.Reader) (parsedFile []*Command, err error) {
 		}
 		
 		if len(submatch[1]) > 0 {
-			//fmt.Printf("Token %d, Parsed parameter: %s\n", index, submatch[1])
+			// Parsing Parameter
+			fmt.Printf("Token %d, Parsed parameter: %s\n", index, submatch[1])
+			if parameter,err := parseParameter(submatch[1], parseEnv); err != nil {
+				fmt.Printf("Parse error for parameter %s: %s\n", submatch[1], err.Error())
+			} else {
+				parsedFile = append(parsedFile, parameter)
+			}
 		} else if len(submatch[2]) > 0 {
-			if dataBlock,err := parseDataBlock(submatch[2]); err != nil {
+			// Parsing non-parameter data block
+			if dataBlock,err := parseDataBlock(submatch[2], parseEnv); err != nil {
 				fmt.Printf("Parse Error for block %s: %s\n", submatch[2], err.Error())
 			} else {
-				dataBlocks = append(dataBlocks, dataBlock)
+				parsedFile = append(parsedFile, dataBlock)
 			}
 		} else {
 			return nil,fmt.Errorf("Error (token %d): Not parameter or data block: %v\n", index, submatch)
 		}
 	}
 	
-	for index,dataBlock := range dataBlocks {
-		fmt.Printf("Parsed data block %d: Type: %T, Value: %v\n", index, dataBlock, dataBlock)
+	for index,dataBlock := range parsedFile {
+		fmt.Printf("Parsed data block %3d: %v\n", index, dataBlock)
 	}
 	
-	return nil,nil
+	return parsedFile,nil
 }
 
-func parseDataBlock(dataBlock string) (DataBlock, error) {
-	parsedDataBlock := dataBlockRegex.FindAllStringSubmatch(dataBlock, -1)
+func GenerateSVG(out io.Writer, parsedFile []DataBlock) error {
 	
-	// First, make sure we captured the number of subexpressions we expected
-	if len(parsedDataBlock) != 1 {
-		return nil,fmt.Errorf("Unable to parse data block %s: error 1", dataBlock)
-	} else if len(parsedDataBlock[0]) != 4 {
-		return nil,fmt.Errorf("Unable to parse data block %s: error 2", dataBlock)
+	width := 1000
+	height := 1000
+	
+	// Set up the initial graphics state
+	gfxState := newGraphicsState(width, height)
+	
+	canvas := svg.New(out)
+	canvas.Start(width, height)
+	
+	for _,dataBlock := range parsedFile {
+		if err := dataBlock.ProcessDataBlockSVG(canvas, gfxState); err != nil {
+			return err
+		}
 	}
 	
-	if parsedDataBlock[0][1] == "G" && (parsedDataBlock[0][2] == "04" || parsedDataBlock[0][2] == "4") {
-		// Handle comments as a special case
-		return &IgnoreDataBlock{parsedDataBlock[0][3]},nil
-	} else {
-		// Otherwise, finish processing the data block
-		return parseNonCommentBlock(parsedDataBlock[0][1], parsedDataBlock[0][2], parsedDataBlock[0][3])
+	canvas.End()
+	
+	// Make sure that the entire file was rendered
+	if !gfxState.fileComplete {
+		return fmt.Errorf("Render of file completed without reaching end of file code (M02)")
 	}
+	
+	return nil
 }
 
-func parseNonCommentBlock(fnLetter string, fnCode string, restOfBlock string) (DataBlock, error) {
-	switch fnLetter {
-		case "G", "":
-			switch fnCode {
-				case "01", "02", "03", "54", "55", "": //NOTE: Codes 54 and 55 are deprecated, the empty function code is for coordinate data blocks with no function
-					// Parse the D code out of remainder of the block
-					parsedDataBlock := dCodeDataBlockRegex.FindAllStringSubmatch(restOfBlock, -1)
-					
-					// First, make sure we captured the number of subexpressions we expected
-					if len(parsedDataBlock) != 1 {
-						return nil,fmt.Errorf("Unable to parse D code from data block %s: error 1", restOfBlock)
-					} else if len(parsedDataBlock[0]) != 3 {
-						return nil,fmt.Errorf("Unable to parse D code from data block %s: error 2", restOfBlock)
-					}
-					
-					if len(parsedDataBlock[0][2]) > 0 { // This is where the D code was parsed to
-						if dCode,err := strconv.ParseInt(parsedDataBlock[0][2], 10, 32); err != nil {
-							return nil,err
-						} else {
-							if dCode >= 10 {
-								// If the D code is >= 10, then this is a set aperture command
-								return &SetCurrentAperture{int(dCode)},nil
-							} else {
-								// Else, this is an interpolation, so we set up a new interpolation with the
-								// function code and d code, and parse the coordinate data
-								newInterpolation := new(Interpolation)
-								switch fnCode {
-									case "01":
-										newInterpolation.fnCode = LINEAR_INTERPOLATION
-										newInterpolation.fnCodeValid = true
-									
-									case "02":
-										newInterpolation.fnCode = CIRCULAR_INTERPOLATION_CLOCKWISE
-										newInterpolation.fnCodeValid = true
-									
-									case "03":
-										newInterpolation.fnCode = CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE
-										newInterpolation.fnCodeValid = true
-									
-									case "55":
-										newInterpolation.fnCode = PREPARE_FOR_FLASH
-										newInterpolation.fnCodeValid = true
-										
-									case "":
-										newInterpolation.fnCodeValid = false
-									
-									//NOTE: We don't have to check for code 54, because it's a deprecated code that optionally precedes
-									//an aperture selection D code, which has already been handled above, and can be safely ignored there
-								}
-								
-								switch dCode {
-									case 1:
-										newInterpolation.opCode = INTERPOLATE_OPERATION
-										newInterpolation.opCodeValid = true
-										
-									case 2:
-										newInterpolation.opCode = MOVE_OPERATION
-										newInterpolation.opCodeValid = true
-									
-									case 3:
-										newInterpolation.opCode = FLASH_OPERATION
-										newInterpolation.opCodeValid = true
-									
-									default:
-										return nil,fmt.Errorf("Unknown D Code: %d", dCode)
-								}
-								
-								return parseCoordinateDataBlock(parsedDataBlock[0][1], newInterpolation)
-							}
-						}
-					} else {
-						// If there was no D code, then this is either a G01, G02, or G03 command by itself with no coordinate data
-						// First, make sure there is no coordinate data, because coordinate data without a D code is deprecated
-						if len(parsedDataBlock[0][1]) > 0 {
-							return nil,fmt.Errorf("Coordinate data without a D code is deprecated and not allowed (Coordinate data: %s)", parsedDataBlock[0][1])
-						}
-						
-						newInterpolation := new(Interpolation)
-						newInterpolation.opCodeValid = false
-						newInterpolation.xValid = false
-						newInterpolation.yValid = false
-						newInterpolation.iValid = false
-						newInterpolation.jValid = false
-						
-						switch fnCode {
-							case "01":
-								newInterpolation.fnCode = LINEAR_INTERPOLATION
-								newInterpolation.fnCodeValid = true;
-								
-							case "02":
-								newInterpolation.fnCode = CIRCULAR_INTERPOLATION_CLOCKWISE
-								newInterpolation.fnCodeValid = true;
-							
-							case "03":
-								newInterpolation.fnCode = CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE
-								newInterpolation.fnCodeValid = true;
-							
-							default:
-								return nil,fmt.Errorf("Illegal function code %s%s by itself", fnLetter, fnCode)
-						}
-						
-						return newInterpolation,nil
-					}
-				
-				case "36":
-					return &GraphicsStateChange{REGION_MODE_ON},nil
-				
-				case "37":
-					return &GraphicsStateChange{REGION_MODE_OFF},nil
-				
-				case "70": //NOTE: Deprecated
-					return &GraphicsStateChange{SET_UNIT_INCH},nil
-				
-				case "71": //NOTE: Deprecated
-					return &GraphicsStateChange{SET_UNIT_MM},nil
-				
-				case "74":
-					return &GraphicsStateChange{SINGLE_QUADRANT_MODE},nil
-				
-				case "75":
-					return &GraphicsStateChange{MULTI_QUADRANT_MODE},nil
-				
-				case "90": //NOTE: Deprecated
-					return &GraphicsStateChange{SET_NOTATION_ABSOLUTE},nil
-				
-				case "91": //NOTE: Deprecated
-					return &GraphicsStateChange{SET_NOTATION_INCREMENTAL},nil
-				
-				default:
-					return nil,fmt.Errorf("Error: Unrecognized function code: %s%s", fnLetter, fnCode)
-			}
-		
-		case "M":
-			switch fnCode {
-				case "00": //NOTE: Deprecated
-					return &GraphicsStateChange{PROGRAM_STOP},nil
-				
-				case "01": //NOTE: Deprecated
-					return &GraphicsStateChange{OPTIONAL_STOP},nil
-			
-				case "02":
-					return &GraphicsStateChange{END_OF_FILE},nil
-				
-				default:
-					return nil,fmt.Errorf("Error: Unrecognized function code: %s%s", fnLetter, fnCode)
-			}
-		
-		default:
-			return nil,fmt.Errorf("Error: Unrecognized function code: %s%s", fnLetter, fnCode)
-	} 
+func newParseEnv() *ParseEnvironment {
+	parseEnv := new(ParseEnvironment)
+	parseEnv.aperturesDefined = make(map[int]bool, 10) // We'll start with an initial capacity of 10, it will grow as necessary
 	
-	return nil,nil
+	return parseEnv
 }
 
-func parseCoordinateDataBlock(restOfBlock string, interpolation *Interpolation) (*Interpolation, error) {
-	// Parse the rest of the data block
-	parsedDataBlock := coordinateDataBlockRegex.FindAllStringSubmatch(restOfBlock, -1)
+func newGraphicsState(xImageSize int, yImageSize int) *GraphicsState {
+	graphicsState := new(GraphicsState)
 	
-	// First, make sure we captured the number of subexpressions we expected
-	if len(parsedDataBlock) != 1 {
-		return nil,fmt.Errorf("Unable to parse coordinate data block %s: error 1", restOfBlock)
-	} else if len(parsedDataBlock[0]) != 5 {
-		return nil,fmt.Errorf("Unable to parse coordinate data block %s: error 2", restOfBlock)
-	}
+	graphicsState.currentLevelPolarity = DARK_POLARITY
+	graphicsState.xImageSize = xImageSize
+	graphicsState.yImageSize = yImageSize
+	graphicsState.apertures = make(map[int]Aperture, 10) // Start with an initial capacity of 10 apertures, will grow as needed
 	
-	// Parse the coordinate data
-	if len(parsedDataBlock[0][1]) > 0 {
-		if x,err := strconv.ParseInt(parsedDataBlock[0][1], 10, 32); err != nil {
-			return nil,err
-		} else {
-			//TODO: Scale this appropriately according to the number format
-			interpolation.x = float64(x)
-			interpolation.xValid = true
-		}
-	} else {
-		interpolation.xValid = false
-	}
+	// All other settings are fine with their go defaults
+	// Current aperture: Doesn't matter since it's undefined by default
+	// Current quadrant mode: Doesn't matter since it's undefined by default
+	// Current interpolation mode: Doesn't matter since it's undefined by default
+	// Coordinate notation: Doesn't matter since it's undefined by default
+	// Current x: 0 is correct
+	// Current y: 0 is correct
+	// Region mode on: false is correct
+	// Aperture set: false is correct
+	// Quadrant mode set: false is correct
+	// Interpolation mode set: false is correct
+	// Region mode on: false is correct
+	// File complete: false is correct
+	// Coordinate notation set: false is correct
 	
-	if len(parsedDataBlock[0][2]) > 0 {
-		if y,err := strconv.ParseInt(parsedDataBlock[0][2], 10, 32); err != nil {
-			return nil,err
-		} else {
-			//TODO: Scale this appropriately according to the number format
-			interpolation.y = float64(y)
-			interpolation.yValid = true
-		}
-	} else {
-		interpolation.yValid = false
-	}
-	
-	if len(parsedDataBlock[0][3]) > 0 {
-		if i,err := strconv.ParseInt(parsedDataBlock[0][3], 10, 32); err != nil {
-			return nil,err
-		} else {
-			//TODO: Scale this appropriately according to the number format
-			interpolation.i = float64(i)
-			interpolation.iValid = true
-		}
-	} else {
-		interpolation.i = 0.0
-		interpolation.iValid = true
-	}
-	
-	if len(parsedDataBlock[0][4]) > 0 {
-		if j,err := strconv.ParseInt(parsedDataBlock[0][4], 10, 32); err != nil {
-			return nil,err
-		} else {
-			//TODO: Scale this appropriately according to the number format
-			interpolation.j = float64(j)
-			interpolation.jValid = true
-		}
-	} else {
-		interpolation.j = 0.0
-		interpolation.jValid = true
-	}
-	
-	return interpolation,nil
+	return graphicsState 
 }

@@ -19,6 +19,8 @@ type Primitive interface {
 
 type Aperture interface {
 	AperturePlaceholder()
+	SetHole(hole Hole)
+	GetHole() Hole
 }
 
 type Hole interface {

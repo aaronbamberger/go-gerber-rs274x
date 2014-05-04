@@ -1,39 +1,6 @@
 package gerber_rs274x
 
-type FormatSpecificationParameter struct {
-	paramCode ParameterCode
-	zeroOmissionMode ZeroOmissionMode
-	coordinateNotation CoordinateNotation
-	xNumDigits int
-	xNumDecimals int
-	yNumDigits int
-	yNumDecimals int
-}
-
-type LevelPolarityParameter struct {
-	paramCode ParameterCode
-	polarity Polarity
-}
-
-type StepAndRepeatParameter struct {
-	paramCode ParameterCode
-	xRepeats int
-	yRepeats int
-	xStepDistance float64
-	yStepDistance float64
-}
-
-type ModeParameter struct {
-	paramCode ParameterCode
-	units Units
-}
-
-type ApertureDefinitionParameter struct {
-	paramCode ParameterCode
-	apertureNumber int
-	apertureType ApertureType
-	aperture Aperture
-}
+import "github.com/ajstarks/svgo"
 
 type ImageNameParameter struct {
 	paramCode ParameterCode
@@ -78,58 +45,43 @@ type MirrorImageParameter struct {
 	axisBMirror bool
 }
 
-func (apertureMacro* ApertureMacroParameter) DataBlockPlaceholder() {
+func (apertureMacro *ApertureMacroParameter) DataBlockPlaceholder() {
 
 }
 
-func (formatSpecification* FormatSpecificationParameter) DataBlockPlaceholder() {
+func (apertureMacro *ApertureMacroParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+	//TODO: Implement this
+	return nil
+}
+
+func (imageName *ImageNameParameter) DataBlockPlaceholder() {
 
 }
 
-func (levelPolarity* LevelPolarityParameter) DataBlockPlaceholder() {
+func (imageRotation *ImageRotationParameter) DataBlockPlaceholder() {
 
 }
 
-func (stepAndRepeat* StepAndRepeatParameter) DataBlockPlaceholder() {
+func (offset *OffsetParameter) DataBlockPlaceholder() {
 
 }
 
-func (mode* ModeParameter) DataBlockPlaceholder() {
+func (axisSelect *AxisSelectParameter) DataBlockPlaceholder() {
 
 }
 
-func (apertureDefinition* ApertureDefinitionParameter) DataBlockPlaceholder() {
+func (imagePolarity *ImagePolarityParameter) DataBlockPlaceholder() {
 
 }
 
-func (imageName* ImageNameParameter) DataBlockPlaceholder() {
+func (scaleFactor *ScaleFactorParameter) DataBlockPlaceholder() {
 
 }
 
-func (imageRotation* ImageRotationParameter) DataBlockPlaceholder() {
+func (levelName *LevelNameParameter) DataBlockPlaceholder() {
 
 }
 
-func (offset* OffsetParameter) DataBlockPlaceholder() {
-
-}
-
-func (axisSelect* AxisSelectParameter) DataBlockPlaceholder() {
-
-}
-
-func (imagePolarity* ImagePolarityParameter) DataBlockPlaceholder() {
-
-}
-
-func (scaleFactor* ScaleFactorParameter) DataBlockPlaceholder() {
-
-}
-
-func (levelName* LevelNameParameter) DataBlockPlaceholder() {
-
-}
-
-func (mirrorImage* MirrorImageParameter) DataBlockPlaceholder() {
+func (mirrorImage *MirrorImageParameter) DataBlockPlaceholder() {
 
 }
