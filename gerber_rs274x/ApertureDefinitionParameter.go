@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type ApertureDefinitionParameter struct {
@@ -16,7 +16,22 @@ func (apertureDefinition *ApertureDefinitionParameter) DataBlockPlaceholder() {
 
 }
 
-func (apertureDefinition *ApertureDefinitionParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (apertureDefinition *ApertureDefinitionParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	// Remember this aperture in the graphics state for later use
+	gfxState.apertures[apertureDefinition.apertureNumber] = apertureDefinition.aperture
+	
+	// Keep track of the smallest aperture definition we see
+	// This will be used as the minimum step size when stroking
+	// during image rendering
+	minSize := apertureDefinition.aperture.GetMinSize()
+	if minSize < imageBounds.smallestApertureSize {
+		imageBounds.smallestApertureSize = minSize
+	}
+	
+	return nil
+}
+
+func (apertureDefinition *ApertureDefinitionParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	// Remember this aperture in the graphics state for later use
 	gfxState.apertures[apertureDefinition.apertureNumber] = apertureDefinition.aperture
 	

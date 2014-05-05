@@ -276,6 +276,9 @@ func parseCircleAperture(adParameter *ApertureDefinitionParameter, modifiers str
 		}
 	}
 	
+	// Save the aperture number
+	newAperture.apertureNumber = adParameter.apertureNumber
+	
 	adParameter.aperture = newAperture
 	
 	// If we're here, we've successfully parsed the new aperture, so update the parse environment
@@ -324,6 +327,9 @@ func parseRectangleAperture(adParameter *ApertureDefinitionParameter, modifiers 
 		}
 	}
 	
+	// Save the aperture number
+	newAperture.apertureNumber = adParameter.apertureNumber
+	
 	adParameter.aperture = newAperture
 	
 	// If we're here, we've successfully parsed the new aperture, so update the parse environment
@@ -371,6 +377,9 @@ func parseObroundAperture(adParameter *ApertureDefinitionParameter, modifiers st
 			return nil,err
 		}
 	}
+	
+	// Save the aperture number
+	newAperture.apertureNumber = adParameter.apertureNumber
 	
 	adParameter.aperture = newAperture
 	
@@ -431,6 +440,9 @@ func parsePolygonAperture(adParameter *ApertureDefinitionParameter, modifiers st
 		}
 	}
 	
+	// Save the aperture number
+	newAperture.apertureNumber = adParameter.apertureNumber
+	
 	adParameter.aperture = newAperture
 	
 	// If we're here, we've successfully parsed the new aperture, so update the parse environment
@@ -441,7 +453,7 @@ func parsePolygonAperture(adParameter *ApertureDefinitionParameter, modifiers st
 
 func parseMacroAperture(adParameter *ApertureDefinitionParameter, name string, modifiers string, env *ParseEnvironment) (DataBlock, error) {
 	adParameter.apertureType = MACRO_APERTURE
-	adParameter.aperture = &MacroAperture{name}
+	adParameter.aperture = &MacroAperture{adParameter.apertureNumber, name}
 	
 	// If we're here, we've successfully parsed the new aperture, so update the parse environment
 	env.aperturesDefined[adParameter.apertureNumber] = true

@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type ModeParameter struct {
@@ -14,7 +14,12 @@ func (mode *ModeParameter) DataBlockPlaceholder() {
 
 }
 
-func (mode *ModeParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (mode *ModeParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	//TODO: For now this doesn't alter the graphics state or draw anything
+	return nil
+}
+
+func (mode *ModeParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	//TODO: For now this doesn't alter the graphics state or draw anything
 	return nil
 }

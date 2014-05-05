@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type StepAndRepeatParameter struct {
@@ -17,7 +17,12 @@ func (stepAndRepeat *StepAndRepeatParameter) DataBlockPlaceholder() {
 
 }
 
-func (stepAndRepeat *StepAndRepeatParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (stepAndRepeat *StepAndRepeatParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	//TODO: Implement this
+	return nil
+}
+
+func (stepAndRepeat *StepAndRepeatParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	//TODO: Implement this
 	return nil
 }

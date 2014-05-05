@@ -3,7 +3,7 @@ package gerber_rs274x
 import (
 	"fmt"
 	"math"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type FormatSpecificationParameter struct {
@@ -20,14 +20,26 @@ func (formatSpecification *FormatSpecificationParameter) DataBlockPlaceholder() 
 
 }
 
-func (formatSpecification *FormatSpecificationParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (formatSpecification *FormatSpecificationParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
 	if gfxState.coordinateNotationSet {
 		return fmt.Errorf("Tried to process illegal 2nd format specification parameter")
 	}
 	
 	gfxState.coordinateNotation = formatSpecification.coordinateNotation
 	gfxState.coordinateNotationSet = true
-	gfxState.drawPrecision = 1.0 / math.Pow10(formatSpecification.xNumDecimals)
+	gfxState.filePrecision = 1.0 / math.Pow10(formatSpecification.xNumDecimals)
+
+	return nil
+}
+
+func (formatSpecification *FormatSpecificationParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
+	if gfxState.coordinateNotationSet {
+		return fmt.Errorf("Tried to process illegal 2nd format specification parameter")
+	}
+	
+	gfxState.coordinateNotation = formatSpecification.coordinateNotation
+	gfxState.coordinateNotationSet = true
+	gfxState.filePrecision = 1.0 / math.Pow10(formatSpecification.xNumDecimals)
 
 	return nil
 }

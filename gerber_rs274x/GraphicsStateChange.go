@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type GraphicsStateChange struct {
@@ -13,7 +13,27 @@ func (graphicsStateChange *GraphicsStateChange) DataBlockPlaceholder() {
 
 }
 
-func (graphicsStateChange *GraphicsStateChange) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (graphicsStateChange *GraphicsStateChange) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	switch graphicsStateChange.fnCode {
+		case SINGLE_QUADRANT_MODE, MULTI_QUADRANT_MODE:
+			gfxState.currentQuadrantMode = graphicsStateChange.fnCode
+		
+		case REGION_MODE_ON:
+			gfxState.regionModeOn = true
+			
+		case REGION_MODE_OFF:
+			gfxState.regionModeOn = false
+			
+		case END_OF_FILE:
+			gfxState.fileComplete = true
+			
+		// For now, we're not going to do anything with any of the other ones
+	}
+	
+	return nil
+}
+
+func (graphicsStateChange *GraphicsStateChange) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	switch graphicsStateChange.fnCode {
 		case SINGLE_QUADRANT_MODE, MULTI_QUADRANT_MODE:
 			gfxState.currentQuadrantMode = graphicsStateChange.fnCode

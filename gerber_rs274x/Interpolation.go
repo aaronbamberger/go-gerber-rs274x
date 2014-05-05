@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type Interpolation struct {
@@ -22,7 +22,73 @@ func (interpolation *Interpolation) DataBlockPlaceholder() {
 
 }
 
-func (interpolation *Interpolation) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBounds, gfxState *GraphicsState) error {
+	// First, if this interpolation has a valid function code, update the graphics state
+	if interpolation.fnCodeValid {
+		switch interpolation.fnCode {
+			case LINEAR_INTERPOLATION, CIRCULAR_INTERPOLATION_CLOCKWISE, CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+				gfxState.currentInterpolationMode = interpolation.fnCode
+				gfxState.interpolationModeSet = true
+		}
+	}
+	
+	// Next, if this interpolation has a valid operation code, perform the operation
+	if interpolation.opCodeValid {
+		switch interpolation.opCode {
+			case INTERPOLATE_OPERATION:
+				newX,newY := getNewCoordinate(interpolation, gfxState)
+				
+				if (epsilonEquals(newX, gfxState.currentX, gfxState.filePrecision)) {
+					// Vertical line
+					if newY > gfxState.currentY {
+						for y := gfxState.currentY; y <= newY; y += gfxState.filePrecision {
+							if err := drawApertureBoundsCheck(bounds, gfxState, newX, y); err != nil {
+								return err
+							}
+						}
+					} else {
+						for y := gfxState.currentY; y >= newY; y -= gfxState.filePrecision {
+							if err := drawApertureBoundsCheck(bounds, gfxState, newX, y); err != nil {
+								return err
+							}
+						}
+					}
+				} else if (epsilonEquals(newY, gfxState.currentY, gfxState.filePrecision)) {
+					// Horizontal line
+					if newX > gfxState.currentX {
+						for x := gfxState.currentX; x <= newX; x += gfxState.filePrecision {
+							if err := drawApertureBoundsCheck(bounds, gfxState, x, newY); err != nil {
+								return err
+							}
+						}
+					} else {
+						for x := gfxState.currentX; x >= newX; x -= gfxState.filePrecision {
+							if err := drawApertureBoundsCheck(bounds, gfxState, x, newY); err != nil {
+								return err
+							}
+						}
+					}
+				} else {
+					// Any other line
+				}
+				
+				gfxState.updateCurrentCoordinate(newX, newY)
+				
+			case MOVE_OPERATION:
+				newX,newY := getNewCoordinate(interpolation, gfxState)
+				gfxState.updateCurrentCoordinate(newX, newY)
+			
+			case FLASH_OPERATION:
+				newX,newY := getNewCoordinate(interpolation, gfxState)
+				gfxState.updateCurrentCoordinate(newX, newY)
+				return drawApertureBoundsCheck(bounds, gfxState, gfxState.currentX, gfxState.currentY)
+		}
+	}
+	
+	return nil
+}
+
+func (interpolation *Interpolation) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	//TODO: This is the hard one
 	
 	// First, if this interpolation has a valid function code, update the graphics state
@@ -40,24 +106,46 @@ func (interpolation *Interpolation) ProcessDataBlockSVG(svg *svg.SVG, gfxState *
 			case INTERPOLATE_OPERATION:
 				newX,newY := getNewCoordinate(interpolation, gfxState)
 				
-				fmt.Printf("Linear interpolation from (%f %f) to (%f %f)\n", gfxState.currentX, gfxState.currentY, newX, newY)
-				
-				if (newX == gfxState.currentX) {
+				if (epsilonEquals(newX, gfxState.currentX, gfxState.filePrecision)) {
 					// Vertical line
-					for y := gfxState.currentY; y <= newY; y += (gfxState.drawPrecision * 100.0) {
-						if err := drawAperture(svg, gfxState, newX, y); err != nil {
-							return err
+					if newY > gfxState.currentY {
+						for y := gfxState.currentY; y <= newY; y += gfxState.drawPrecision {
+							if err := drawAperture(surface, gfxState, newX, y); err != nil {
+								return err
+							}
+						}
+					} else {
+						for y := gfxState.currentY; y >= newY; y -= gfxState.drawPrecision {
+							if err := drawAperture(surface, gfxState, newX, y); err != nil {
+								return err
+							}
 						}
 					}
-				} else if (newY == gfxState.currentY) {
+				} else if (epsilonEquals(newY, gfxState.currentY, gfxState.filePrecision)) {
 					// Horizontal line
-					for x := gfxState.currentX; x <= newX; x += (gfxState.drawPrecision * 100.0) {
-						if err := drawAperture(svg, gfxState, x, newY); err != nil {
-							return err
+					if newX > gfxState.currentX {
+						for x := gfxState.currentX; x <= newX; x += gfxState.drawPrecision {
+							if err := drawAperture(surface, gfxState, x, newY); err != nil {
+								return err
+							}
+						}
+					} else {
+						for x := gfxState.currentX; x >= newX; x -= gfxState.drawPrecision {
+							if err := drawAperture(surface, gfxState, x, newY); err != nil {
+								return err
+							}
 						}
 					}
 				} else {
 					// Any other line
+				}
+				
+				// Make sure we draw the aperture at the actual end coordinate.
+				// NOTE: This is probably redundant, but because of how I'm optimizing the
+				// coordinate stepping, it's possible that we won't exactly hit the end,
+				// so we do it here again just in case
+				if err := drawAperture(surface, gfxState, newX, newY); err != nil {
+					return err
 				}
 				
 				gfxState.updateCurrentCoordinate(newX, newY)
@@ -69,20 +157,29 @@ func (interpolation *Interpolation) ProcessDataBlockSVG(svg *svg.SVG, gfxState *
 			case FLASH_OPERATION:
 				newX,newY := getNewCoordinate(interpolation, gfxState)
 				gfxState.updateCurrentCoordinate(newX, newY)
-				return drawAperture(svg, gfxState, gfxState.currentX, gfxState.currentY)
+				return drawAperture(surface, gfxState, gfxState.currentX, gfxState.currentY)
 		}
 	}
 	
 	return nil
 }
 
-func drawAperture(svg *svg.SVG, gfxState *GraphicsState, x float64, y float64) error {
-
+func drawApertureBoundsCheck(bounds *ImageBounds, gfxState *GraphicsState, x float64, y float64) error {
 	if !gfxState.apertureSet {
 		return fmt.Errorf("Attempt to use aperture before current aperture has been defined")
 	}
 	
-	gfxState.apertures[gfxState.currentAperture].DrawApertureSVG(svg, gfxState, x, y)
+	gfxState.apertures[gfxState.currentAperture].DrawApertureBoundsCheck(bounds, gfxState, x, y)
+
+	return nil
+}
+
+func drawAperture(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
+	if !gfxState.apertureSet {
+		return fmt.Errorf("Attempt to use aperture before current aperture has been defined")
+	}
+	
+	gfxState.apertures[gfxState.currentAperture].DrawApertureSurface(surface, gfxState, x, y)
 
 	return nil
 }

@@ -1,8 +1,9 @@
 package gerber_rs274x
 
-import "github.com/ajstarks/svgo"
+import cairo "github.com/ungerik/go-cairo"
 
 type DataBlock interface {
 	DataBlockPlaceholder()
-	ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error
+	ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error
+	ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error
 }

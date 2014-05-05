@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type LevelPolarityParameter struct {
@@ -14,7 +14,13 @@ func (levelPolarity *LevelPolarityParameter) DataBlockPlaceholder() {
 
 }
 
-func (levelPolarity *LevelPolarityParameter) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (levelPolarity *LevelPolarityParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	gfxState.currentLevelPolarity = levelPolarity.polarity
+	
+	return nil
+}
+
+func (levelPolarity *LevelPolarityParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	gfxState.currentLevelPolarity = levelPolarity.polarity
 	
 	return nil

@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"regexp"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 var coordDataBlockRegex *regexp.Regexp
@@ -39,35 +39,10 @@ type ParseEnvironment struct {
 	aperturesDefined map[int]bool
 }
 
-type GraphicsState struct {
-	currentAperture int
-	currentQuadrantMode FunctionCode
-	currentInterpolationMode FunctionCode
-	currentX float64
-	currentY float64
-	currentLevelPolarity Polarity
-	regionModeOn bool
-	xImageSize int
-	yImageSize int
-	fileComplete bool
-	coordinateNotation CoordinateNotation
-	drawPrecision float64
-	
-	// As we encounter aperture definitions, we save them
-	// for later use while drawing
-	apertures map[int]Aperture
-	
-	// Some of these default to undefined,
-	// so we also need to keep track of when they get defined
-	apertureSet bool
-	quadrantModeSet bool
-	interpolationModeSet bool
-	coordinateNotationSet bool
-}
-
-func (gfxState *GraphicsState) updateCurrentCoordinate(newX float64, newY float64) {
-	gfxState.currentX = newX
-	gfxState.currentY = newY
+type ScalingParms struct {
+	scaleFactor float64
+	xOffset float64
+	yOffset float64
 }
 
 func init() {
@@ -147,24 +122,42 @@ func ParseGerberFile(in io.Reader) (parsedFile []DataBlock, err error) {
 	return parsedFile,nil
 }
 
-func GenerateSVG(out io.Writer, parsedFile []DataBlock) error {
+func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	
-	width := 4000
-	height := 2000
+	width := 1000
+	height := 500
 	
-	// Set up the initial graphics state
-	gfxState := newGraphicsState(width, height)
-	
-	canvas := svg.New(out)
-	canvas.Start(width, height)
+	// First, need to do a full render of the file, just keeping track of the bounds
+	// of the generated image, so we can do the proper scaling when we render it for real
+	gfxStateBounds := newGraphicsState(nil, 0, 0)
+	bounds := newImageBounds()
 	
 	for _,dataBlock := range parsedFile {
-		if err := dataBlock.ProcessDataBlockSVG(canvas, gfxState); err != nil {
+		if err := dataBlock.ProcessDataBlockBoundsCheck(bounds, gfxStateBounds); err != nil {
 			return err
 		}
 	}
 	
-	canvas.End()
+	fmt.Printf("X Bounds: (%f %f) Y Bounds: (%f %f)\n", bounds.xMin, bounds.xMax, bounds.yMin, bounds.yMax)
+	
+	
+	// Set up the graphics state for the actual drawing
+	gfxState := newGraphicsState(bounds, width, height)
+	
+	// Construct the surface we're drawing to
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, width, height)
+	
+	for _,dataBlock := range parsedFile {
+		if err := dataBlock.ProcessDataBlockSurface(surface, gfxState); err != nil {
+			gfxState.releaseRenderedSurfaces()
+			surface.Finish()
+			return err
+		}
+	}
+	gfxState.releaseRenderedSurfaces()
+	
+	surface.WriteToPNG(outFileName)
+	surface.Finish()
 	
 	// Make sure that the entire file was rendered
 	if !gfxState.fileComplete {
@@ -179,30 +172,4 @@ func newParseEnv() *ParseEnvironment {
 	parseEnv.aperturesDefined = make(map[int]bool, 10) // We'll start with an initial capacity of 10, it will grow as necessary
 	
 	return parseEnv
-}
-
-func newGraphicsState(xImageSize int, yImageSize int) *GraphicsState {
-	graphicsState := new(GraphicsState)
-	
-	graphicsState.currentLevelPolarity = DARK_POLARITY
-	graphicsState.xImageSize = xImageSize
-	graphicsState.yImageSize = yImageSize
-	graphicsState.apertures = make(map[int]Aperture, 10) // Start with an initial capacity of 10 apertures, will grow as needed
-	
-	// All other settings are fine with their go defaults
-	// Current aperture: Doesn't matter since it's undefined by default
-	// Current quadrant mode: Doesn't matter since it's undefined by default
-	// Current interpolation mode: Doesn't matter since it's undefined by default
-	// Coordinate notation: Doesn't matter since it's undefined by default
-	// Current x: 0 is correct
-	// Current y: 0 is correct
-	// Region mode on: false is correct
-	// Aperture set: false is correct
-	// Quadrant mode set: false is correct
-	// Interpolation mode set: false is correct
-	// Region mode on: false is correct
-	// File complete: false is correct
-	// Coordinate notation set: false is correct
-	
-	return graphicsState 
 }

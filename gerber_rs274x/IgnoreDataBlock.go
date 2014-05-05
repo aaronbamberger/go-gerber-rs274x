@@ -2,7 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"github.com/ajstarks/svgo"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type IgnoreDataBlock struct {
@@ -13,7 +13,12 @@ func (ignoreDataBlock *IgnoreDataBlock) DataBlockPlaceholder() {
 
 }
 
-func (ignoreDataBlock *IgnoreDataBlock) ProcessDataBlockSVG(svg *svg.SVG, gfxState *GraphicsState) error {
+func (ignoreDataBlock *IgnoreDataBlock) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	// This is a comment, so it doesn't change the graphics state or draw anything
+	return nil
+}
+
+func (ignoreDataBlock *IgnoreDataBlock) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
 	// This is a comment, so it doesn't change the graphics state or draw anything
 	return nil
 }
