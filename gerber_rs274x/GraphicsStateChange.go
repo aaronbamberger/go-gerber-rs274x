@@ -43,6 +43,15 @@ func (graphicsStateChange *GraphicsStateChange) ProcessDataBlockSurface(surface 
 			
 		case REGION_MODE_OFF:
 			gfxState.regionModeOn = false
+			// If we're turning region mode off, we need to close and draw any contours in progress
+			switch gfxState.currentLevelPolarity {
+				case DARK_POLARITY:
+					surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
+				
+				case CLEAR_POLARITY:
+					surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
+			}
+			surface.Fill()
 			
 		case END_OF_FILE:
 			gfxState.fileComplete = true
