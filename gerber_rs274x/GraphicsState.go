@@ -59,9 +59,9 @@ func newGraphicsState(bounds *ImageBounds, xImageSize int, yImageSize int) *Grap
 		yScale := (float64(yImageSize) - yMargin) / ySpan
 		graphicsState.scaleFactor = math.Min(xScale, yScale)
 		
-		// Compute offsets to apply to all coordinates to make them positive and account for margins
-		graphicsState.xOffset = (math.Abs(bounds.xMin) * graphicsState.scaleFactor) + (xMargin / 2.0)
-		graphicsState.yOffset = (math.Abs(bounds.yMin) * graphicsState.scaleFactor) + (yMargin / 2.0)
+		// Compute offsets to apply to all coordinates to start them at zero and account for margins
+		graphicsState.xOffset = -(bounds.xMin * graphicsState.scaleFactor) + (xMargin / 2.0)
+		graphicsState.yOffset = -(bounds.yMin * graphicsState.scaleFactor) + (yMargin / 2.0)
 		
 		graphicsState.drawPrecision = bounds.smallestApertureSize
 	}

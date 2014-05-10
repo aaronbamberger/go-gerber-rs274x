@@ -10,6 +10,7 @@ type ImageBounds struct {
 	yMin float64
 	yMax float64
 	smallestApertureSize float64
+	boundsSet bool
 }
 
 func newImageBounds() *ImageBounds {
@@ -20,19 +21,29 @@ func newImageBounds() *ImageBounds {
 }
 
 func (bounds *ImageBounds) updateBounds(xMin float64, xMax float64, yMin float64, yMax float64) {
-	if xMin < bounds.xMin {
+	// If we haven't seen any bounds yet, we just set the mins and maxes
+	// Otherwise, we only update them if they're bigger or smaller
+	if !bounds.boundsSet {
 		bounds.xMin = xMin
-	}
-	
-	if xMax > bounds.xMax {
 		bounds.xMax = xMax
-	}
-	
-	if yMin < bounds.yMin {
 		bounds.yMin = yMin
-	}
-	
-	if yMax > bounds.yMax {
 		bounds.yMax = yMax
+		bounds.boundsSet = true
+	} else {
+		if xMin < bounds.xMin {
+			bounds.xMin = xMin
+		}
+		
+		if xMax > bounds.xMax {
+			bounds.xMax = xMax
+		}
+		
+		if yMin < bounds.yMin {
+			bounds.yMin = yMin
+		}
+		
+		if yMax > bounds.yMax {
+			bounds.yMax = yMax
+		}
 	}
 }

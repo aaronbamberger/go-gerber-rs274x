@@ -96,12 +96,12 @@ func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *Graphic
 	// If there's a rotation, convert from the gerber coordinate space
 	// to the cairo coordinate space, and apply the rotation
 	if (aperture.rotationDegrees != 0.0) {
-		// First, need to translate because we want to rotate about the center of the aperture
+		// Translate the origin, because we want to rotate about the center of the aperture
 		surface.Translate(scaledRadius, scaledRadius)
 	
 		// Invert the angle (because gerber file and cairo treat signs of angles opposite of each other)
 		// and convert to radians
-		correctedAngle := (-aperture.rotationDegrees) * (math.Pi / 180.0)
+		correctedAngle := aperture.rotationDegrees * (math.Pi / 180.0)
 		
 		// Perform the rotation
 		surface.Rotate(correctedAngle)

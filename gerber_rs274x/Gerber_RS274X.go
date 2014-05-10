@@ -147,6 +147,13 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	// Construct the surface we're drawing to
 	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, width, height)
 	
+	// This is important for regions with cut-ins.  If we leave the fill rule the default (winding),
+	// cut-ins don't render correctly
+	surface.SetFillRule(cairo.FILL_RULE_EVEN_ODD)
+	// Invert the Y-axis.  This is to correct for the difference in coordinate frames between the gerber file and cairo
+	surface.Scale(1.0, -1.0)
+	surface.Translate(0.0, float64(-height))
+	
 	for _,dataBlock := range parsedFile {
 		if err := dataBlock.ProcessDataBlockSurface(surface, gfxState); err != nil {
 			gfxState.releaseRenderedSurfaces()

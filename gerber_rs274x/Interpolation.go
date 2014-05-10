@@ -147,51 +147,90 @@ func drawAperture(surface *cairo.Surface, gfxState *GraphicsState, x float64, y 
 func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface, gfxState *GraphicsState) error {
 	switch interpolation.opCode {
 		case INTERPOLATE_OPERATION:
-			newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
-			
-			if (epsilonEquals(newX, gfxState.currentX, gfxState.filePrecision)) {
-				// Vertical line
-				if newY > gfxState.currentY {
-					for y := gfxState.currentY; y <= newY; y += gfxState.drawPrecision {
-						if err := drawAperture(surface, gfxState, newX, y); err != nil {
+			switch gfxState.currentInterpolationMode {
+				case LINEAR_INTERPOLATION:
+					newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
+					lineAngle := math.Atan2(newY - gfxState.currentY, newX - gfxState.currentX)
+					lineLength := math.Hypot(newX - gfxState.currentX, newY - gfxState.currentY)
+					totalSteps := lineLength / gfxState.drawPrecision
+					xDrawStep := gfxState.drawPrecision * math.Cos(lineAngle)
+					yDrawStep := gfxState.drawPrecision * math.Sin(lineAngle)
+					
+					for x,y,step := gfxState.currentX,gfxState.currentY,0.0; step < totalSteps; x,y,step = x + xDrawStep,y + yDrawStep,step + 1.0 {
+						if err := drawAperture(surface, gfxState, x, y); err != nil {
 							return err
 						}
 					}
-				} else {
-					for y := gfxState.currentY; y >= newY; y -= gfxState.drawPrecision {
-						if err := drawAperture(surface, gfxState, newX, y); err != nil {
-							return err
-						}
+					
+					// Make sure we draw the aperture at the actual end coordinate.
+					// NOTE: This is probably redundant, but because of how I'm optimizing the
+					// coordinate stepping, it's possible that we won't exactly hit the end,
+					// so we do it here again just in case
+					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
+						return err
 					}
-				}
-			} else if (epsilonEquals(newY, gfxState.currentY, gfxState.filePrecision)) {
-				// Horizontal line
-				if newX > gfxState.currentX {
-					for x := gfxState.currentX; x <= newX; x += gfxState.drawPrecision {
-						if err := drawAperture(surface, gfxState, x, newY); err != nil {
-							return err
-						}
+					
+					// Finally, update the graphics state with the new end coordinate
+					gfxState.updateCurrentCoordinate(newX, newY)
+					
+				case CIRCULAR_INTERPOLATION_CLOCKWISE:
+					newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
+					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+						// TODO: This feels hacky, see if I can come up with a better way to handle this
+						angle2 -= (2.0 * math.Pi)
 					}
-				} else {
-					for x := gfxState.currentX; x >= newX; x -= gfxState.drawPrecision {
-						if err := drawAperture(surface, gfxState, x, newY); err != nil {
+					radius := math.Hypot(newX - centerX, newY - centerY)
+					angleStep := gfxState.drawPrecision / radius
+					
+					for angle := angle1; angle > angle2; angle -= angleStep {
+						offsetX := radius * math.Cos(angle)
+						offsetY := radius * math.Sin(angle)
+						if err := drawAperture(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
 							return err
-						}
+						} 
 					}
-				}
-			} else {
-				// Any other line
+					
+					// Make sure we draw the aperture at the actual end coordinate.
+					// NOTE: This is probably redundant, but because of how I'm optimizing the
+					// coordinate stepping, it's possible that we won't exactly hit the end,
+					// so we do it here again just in case
+					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
+						return err
+					}
+					
+					// Finally, update the graphics state with the new end coordinate
+					gfxState.updateCurrentCoordinate(newX, newY)
+				
+				case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+					newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
+					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+						// TODO: This feels hacky, see if I can come up with a better way to handle this
+						angle2 += (2.0 * math.Pi)
+					}
+					radius := math.Hypot(newX - centerX, newY - centerY)
+					angleStep := gfxState.drawPrecision / radius
+					
+					for angle := angle1; angle < angle2; angle += angleStep {
+						offsetX := radius * math.Cos(angle)
+						offsetY := radius * math.Sin(angle)
+						if err := drawAperture(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+							return err
+						} 
+					}
+					
+					// Make sure we draw the aperture at the actual end coordinate.
+					// NOTE: This is probably redundant, but because of how I'm optimizing the
+					// coordinate stepping, it's possible that we won't exactly hit the end,
+					// so we do it here again just in case
+					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
+						return err
+					}
+					
+					// Finally, update the graphics state with the new end coordinate
+					gfxState.updateCurrentCoordinate(newX, newY)
 			}
-			
-			// Make sure we draw the aperture at the actual end coordinate.
-			// NOTE: This is probably redundant, but because of how I'm optimizing the
-			// coordinate stepping, it's possible that we won't exactly hit the end,
-			// so we do it here again just in case
-			if err := drawAperture(surface, gfxState, newX, newY); err != nil {
-				return err
-			}
-			
-			gfxState.updateCurrentCoordinate(newX, newY)
 			
 		case MOVE_OPERATION:
 			newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
@@ -216,7 +255,6 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 				case LINEAR_INTERPOLATION:
 					correctedX := (newX * gfxState.scaleFactor) + gfxState.xOffset
 					correctedY := (newY * gfxState.scaleFactor) + gfxState.yOffset
-					fmt.Printf("Line to (%f %f), Scale Factor: %f\n", correctedX, correctedY, gfxState.scaleFactor)
 					surface.LineTo(correctedX, correctedY)
 				
 				case CIRCULAR_INTERPOLATION_CLOCKWISE:
@@ -226,11 +264,12 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
 						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
 						// TODO: This feels hacky, see if I can come up with a better way to handle this
-						angle1 = 0
-						angle2 = 2.0 * math.Pi
+						angle2 -= (2.0 * math.Pi)
 					}
-					fmt.Printf("Clockwise arc, Center: (%f %f), Radius: %f, Angles: (%f %f)\n", correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
-					surface.Arc(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
+					
+					// NOTE: The arc direction is relative to the gerber file coordinate frame
+					// The conversion to the cairo coordinate frame is inherent in the y-axis mirror transformation of the surface
+					surface.ArcNegative(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
 				
 				case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
 					correctedCenterX := (centerX * gfxState.scaleFactor) + gfxState.xOffset
@@ -239,11 +278,12 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
 						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
 						// TODO: This feels hacky, see if I can come up with a better way to handle this
-						angle1 = 2.0 * math.Pi
-						angle2 = 0
+						angle2 += (2.0 * math.Pi)
 					}
-					fmt.Printf("Counter-Clockwise arc, Center: (%f %f), Radius: %f, Angles: (%f %f)\n", correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
-					surface.ArcNegative(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
+					
+					// NOTE: The arc direction is relative to the gerber file coordinate frame
+					// The conversion to the cairo coordinate frame is inherent in the y-axis mirror transformation of the surface
+					surface.Arc(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
 			}
 		
 			gfxState.updateCurrentCoordinate(newX, newY)
@@ -310,24 +350,26 @@ func (interpolation *Interpolation) getNewCoordinate(gfxState *GraphicsState) (n
 					centerYCandidates := []float64{gfxState.currentY - interpolation.j, gfxState.currentY + interpolation.j}
 					for _,x := range centerXCandidates {
 						for _,y := range centerYCandidates {
-							// Compute the angle described by using the law of cosines
-							theta := lawOfCosines(gfxState.currentX, gfxState.currentY, newX, newY, x, y)
+							// Compute the starting and ending angles of the arc, and then the circumscribed angle
+							angle1 := math.Atan2(gfxState.currentY - y, gfxState.currentX - x)
+							angle2 := math.Atan2(newY - y, newX - x)
+							theta := angle2 - angle1
 							
-							if math.Abs(theta) < (math.Pi / 2.0) {
-								angle1 := convertAngleFromGerberToCairo(math.Atan2(gfxState.currentY - y, gfxState.currentX - x))
-								angle2 := convertAngleFromGerberToCairo(math.Atan2(newY - y, newX - x))
+							if math.Abs(theta) <= (math.Pi / 2.0) {
 								// If the angle is <= 90 degrees, check whether it's the correct direction
 								// for the current interpolation mode.  If it is, we've found the correct center, so return
+								// NOTE: All of the comparisons are done in the gerber-file coordinate frame
+								// The conversion to the cairo coordinate frame is inherent in the y-axis mirror transformation of the surface
 								if gfxState.currentInterpolationMode == CIRCULAR_INTERPOLATION_CLOCKWISE {
-									if angle2 > angle1 {
-										return newX,newY,x,y,angle1,angle2
-									}
-								} else {
 									if angle1 > angle2 {
 										return newX,newY,x,y,angle1,angle2
 									}
+								} else {
+									if angle2 > angle1 {
+										return newX,newY,x,y,angle1,angle2
+									}
 								}
-							} 
+							}
 						}
 					}
 					fmt.Printf("ERROR: Didn't find an acceptable center\n")
@@ -335,32 +377,13 @@ func (interpolation *Interpolation) getNewCoordinate(gfxState *GraphicsState) (n
 				case MULTI_QUADRANT_MODE:
 					arcCenterX := gfxState.currentX + interpolation.i
 					arcCenterY := gfxState.currentY + interpolation.j
-					angle1 := convertAngleFromGerberToCairo(math.Atan2(gfxState.currentY - arcCenterY, gfxState.currentX - arcCenterX))
-					angle2 := convertAngleFromGerberToCairo(math.Atan2(newY - arcCenterY, newX - arcCenterX))
+					angle1 := math.Atan2(gfxState.currentY - arcCenterY, gfxState.currentX - arcCenterX)
+					angle2 := math.Atan2(newY - arcCenterY, newX - arcCenterX)
 					return newX,newY,arcCenterX,arcCenterY,angle1,angle2
 			}
 	}
 	
 	return
-}
-
-func convertAngleFromGerberToCairo(angle float64) (convertedAngle float64) {
-	// Convert an angle calculated in the gerber coordinate frame into the corresponding
-	// angle in the cairo coordinate frame
-	
-	// First, we subtract the given angle from 360 to swap the sign on the y axis
-	angle = (2.0 * math.Pi) - angle
-	
-	// We then normalize the angle to between 0 and 360
-	for angle > (2.0 * math.Pi) {
-		angle -= (2.0 * math.Pi)
-	}
-	
-	for angle < 0 {
-		angle += (2.0 * math.Pi)
-	}
-	
-	return angle
 }
 
 func lawOfCosines(aX float64, aY float64, bX float64, bY float64, cX float64, cY float64) (angle float64) {
