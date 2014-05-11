@@ -24,6 +24,9 @@ type GraphicsState struct {
 	// As we encounter aperture definitions, we save them
 	// for later use while drawing
 	apertures map[int]Aperture
+	// We also need to remember aperture macro definitions, so that we can recall them when they are
+	// referenced in aperture definition parameters
+	apertureMacros map[string][]ApertureMacroDataBlock
 	// The first time an aperture is rendered, we render it to a cairo surface
 	// Then, we can just look up the rendered aperture the next time we need it
 	// This should provide for some optimization, since the same aperture will
@@ -44,6 +47,7 @@ func newGraphicsState(bounds *ImageBounds, xImageSize int, yImageSize int) *Grap
 	graphicsState.currentLevelPolarity = DARK_POLARITY
 	graphicsState.apertures = make(map[int]Aperture, 10) // Start with an initial capacity of 10 apertures, will grow as needed
 	graphicsState.renderedApertures = make(map[int]*cairo.Surface, 10) // Same as above
+	graphicsState.apertureMacros = make(map[string][]ApertureMacroDataBlock, 10) // Same as above
 	
 	if bounds != nil {
 		// If bounds are provided, compute the necessary scaling information

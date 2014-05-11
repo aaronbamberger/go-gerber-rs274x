@@ -22,6 +22,11 @@ func (primitive *OutlinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }
 
+func (primitive *OutlinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64) {
+	//TODO: Implement
+	return 0.0,0.0,0.0,0.0
+}
+
 func (primitive *OutlinePrimitive) String() string {
 	return fmt.Sprintf("{Outline, Exposure %v, Num Points %v, Start X %v, Start Y %v, Subsequent X %v, Subsequent Y %v, Rotation %v}",
 						primitive.exposure,

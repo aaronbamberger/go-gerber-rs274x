@@ -21,6 +21,11 @@ func (primitive *LowerLeftLinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }
 
+func (primitive *LowerLeftLinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64) {
+	//TODO: Implement
+	return 0.0,0.0,0.0,0.0
+}
+
 func (primitive *LowerLeftLinePrimitive) String() string {
 	return fmt.Sprintf("{Lower Left Line, Exposure %v, Width %v, Height %v, Lower Left X %v, Lower Left Y %v, Rotation %v}",
 						primitive.exposure,

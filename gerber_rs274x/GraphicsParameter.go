@@ -1,7 +1,5 @@
 package gerber_rs274x
 
-import cairo "github.com/ungerik/go-cairo"
-
 type ImageNameParameter struct {
 	paramCode ParameterCode
 	name string
@@ -47,16 +45,6 @@ type MirrorImageParameter struct {
 
 func (apertureMacro *ApertureMacroParameter) DataBlockPlaceholder() {
 
-}
-
-func (apertureMacro *ApertureMacroParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
-	//TODO: Implement this
-	return nil
-}
-
-func (apertureMacro *ApertureMacroParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
-	//TODO: Implement this
-	return nil
 }
 
 func (imageName *ImageNameParameter) DataBlockPlaceholder() {

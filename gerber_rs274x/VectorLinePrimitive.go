@@ -2,6 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
+	_ "github.com/ungerik/go-cairo"
 )
 
 type VectorLinePrimitive struct {
@@ -20,6 +21,14 @@ func (primitive *VectorLinePrimitive) AperturePrimitivePlaceholder() {
 
 func (primitive *VectorLinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
+}
+
+func (primitive *VectorLinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64) {
+	//TODO: Implement
+	
+	//surface := cairo.NewSurface(cairo.FORMAT_ARGB32, 100, 100)
+	
+	return 0.0,0.0,0.0,0.0
 }
 
 func (primitive *VectorLinePrimitive) String() string {

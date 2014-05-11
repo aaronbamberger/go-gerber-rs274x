@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type ApertureMacroParameter struct {
@@ -19,6 +20,7 @@ type ApertureMacroDataBlock interface {
 type AperturePrimitive interface {
 	ApertureMacroDataBlock
 	AperturePrimitivePlaceholder()
+	GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64)
 }
 
 type ApertureMacroVariableDefinition struct {
@@ -28,6 +30,16 @@ type ApertureMacroVariableDefinition struct {
 
 type ApertureMacroComment struct {
 	comment string
+}
+
+func (apertureMacro *ApertureMacroParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	gfxState.apertureMacros[apertureMacro.macroName] = apertureMacro.dataBlocks
+	return nil
+}
+
+func (apertureMacro *ApertureMacroParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
+	//TODO: Implement this
+	return nil
 }
 
 func (variableDefinition *ApertureMacroVariableDefinition) ApertureMacroDataBlockPlaceholder() {

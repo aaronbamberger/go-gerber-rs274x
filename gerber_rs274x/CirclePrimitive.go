@@ -19,6 +19,14 @@ func (primitive *CirclePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }
 
+func (primitive *CirclePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64) {
+	centerX := primitive.centerX.EvaluateExpression(env)
+	centerY := primitive.centerY.EvaluateExpression(env)
+	radius := primitive.diameter.EvaluateExpression(env) / 2.0
+
+	return centerX - radius,centerX + radius,centerY - radius,centerY + radius
+}
+
 func (primitive *CirclePrimitive) String() string {
 	return fmt.Sprintf("{Circle, Exposure %v, Diameter %v, Center (%v %v)}", primitive.exposure, primitive.diameter, primitive.centerX, primitive.centerY)
 }
