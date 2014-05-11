@@ -453,7 +453,23 @@ func parsePolygonAperture(adParameter *ApertureDefinitionParameter, modifiers st
 
 func parseMacroAperture(adParameter *ApertureDefinitionParameter, name string, modifiers string, env *ParseEnvironment) (DataBlock, error) {
 	adParameter.apertureType = MACRO_APERTURE
-	adParameter.aperture = &MacroAperture{adParameter.apertureNumber, name}
+	
+	aperture := new(MacroAperture)
+	aperture.apertureNumber = adParameter.apertureNumber
+	aperture.macroName = name
+	aperture.env = NewExpressionEnvironment()
+	
+	// Parse the modifiers
+	splitModifiers := strings.Split(modifiers, "X")
+	for num,val := range splitModifiers {
+		if parsedVal,err := strconv.ParseFloat(val, 64); err != nil {
+			return nil,err
+		} else {
+			aperture.env.setVariableValue(num + 1, parsedVal)
+		}
+	}
+	
+	adParameter.aperture = aperture
 	
 	// If we're here, we've successfully parsed the new aperture, so update the parse environment
 	env.aperturesDefined[adParameter.apertureNumber] = true

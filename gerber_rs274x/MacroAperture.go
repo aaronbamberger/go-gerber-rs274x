@@ -9,6 +9,7 @@ import (
 type MacroAperture struct {
 	apertureNumber int
 	macroName string
+	env *ExpressionEnvironment
 }
 
 func (aperture *MacroAperture) AperturePlaceholder() {
