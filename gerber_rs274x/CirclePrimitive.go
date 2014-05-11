@@ -1,12 +1,16 @@
 package gerber_rs274x
 
 type CirclePrimitive struct {
-	exposure Modifier
-	diameter Modifier
-	centerX Modifier
-	centerY Modifier
+	exposure ApertureMacroExpression
+	diameter ApertureMacroExpression
+	centerX ApertureMacroExpression
+	centerY ApertureMacroExpression
 }
 
-func (circle* CirclePrimitive) PrimitivePlaceholder() {
+func (primitive *CirclePrimitive) AperturePrimitivePlaceholder() {
+
+}
+
+func (primitive *CirclePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }

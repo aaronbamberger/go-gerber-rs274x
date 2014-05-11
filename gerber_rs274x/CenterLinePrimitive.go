@@ -1,14 +1,18 @@
 package gerber_rs274x
 
 type CenterLinePrimitive struct {
-	exposure Modifier
-	width Modifier
-	height Modifier
-	centerX Modifier
-	centerY Modifier
-	rotationAngle Modifier
+	exposure ApertureMacroExpression
+	width ApertureMacroExpression
+	height ApertureMacroExpression
+	centerX ApertureMacroExpression
+	centerY ApertureMacroExpression
+	rotationAngle ApertureMacroExpression
 }
 
-func (centerLine* CenterLinePrimitive) PrimitivePlaceholder() {
+func (primitive *CenterLinePrimitive) AperturePrimitivePlaceholder() {
+
+}
+
+func (primitive *CenterLinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }

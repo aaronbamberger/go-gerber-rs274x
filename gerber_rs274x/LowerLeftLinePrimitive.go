@@ -1,14 +1,18 @@
 package gerber_rs274x
 
 type LowerLeftLinePrimitive struct {
-	exposure Modifier
-	width Modifier
-	height Modifier
-	lowerLeftX Modifier
-	lowerLeftY Modifier
-	rotationAngle Modifier
+	exposure ApertureMacroExpression
+	width ApertureMacroExpression
+	height ApertureMacroExpression
+	lowerLeftX ApertureMacroExpression
+	lowerLeftY ApertureMacroExpression
+	rotationAngle ApertureMacroExpression
 }
 
-func (lowerLeftLine* LowerLeftLinePrimitive) PrimitivePlaceholder() {
+func (primitive *LowerLeftLinePrimitive) AperturePrimitivePlaceholder() {
+
+}
+
+func (primitive *LowerLeftLinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }

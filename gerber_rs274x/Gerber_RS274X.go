@@ -16,6 +16,7 @@ var coordinateDataBlockRegex *regexp.Regexp
 var fsParameterRegex *regexp.Regexp
 var srParameterRegex *regexp.Regexp
 var adParameterRegex *regexp.Regexp
+var amVariableDefinitionRegex *regexp.Regexp
 
 type ParseState int
 
@@ -68,6 +69,8 @@ func init() {
 	srParameterRegex = regexp.MustCompile(`(?:X(?P<xRepeat>[[:digit:]]+))?(?:Y(?P<yRepeat>[[:digit:]]+))?(?:I(?P<iStep>[[:digit:]]+\.?[[:digit:]]*))?(?:J(?P<jStep>[[:digit:]]+\.?[[:digit:]]*))?`)
 	
 	adParameterRegex = regexp.MustCompile(`D(?P<dCode>[[:digit:]]*)(?P<apertureType>[[:alnum:]_\+\-/\!\?<>"'\(\){}\.\\\|\&@# ]+),?(?P<modifiers>[[:digit:]\.X]*)`)
+	
+	amVariableDefinitionRegex = regexp.MustCompile(`\$(?P<varNum>[[:digit:]]+)=(?P<varExp>[[:digit:]$.+-x/]+)`)
 }
 
 func ParseGerberFile(in io.Reader) (parsedFile []DataBlock, err error) {

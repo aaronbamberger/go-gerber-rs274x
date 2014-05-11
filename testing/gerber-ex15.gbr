@@ -1,0 +1,17 @@
+%AMRECTROUNDCORNERS*
+0 Rectangle with rounded corners. *
+0 Offsets $4 and $5 are interpreted as the *
+0 offset of the flash origin from the pad center. *
+0 First create horizontal rectangle. *
+21,1,$1,$2-$3-$3,0-$4,0-$5,0*
+0 From now on, use width and height half-sizes. *
+$9=$1/2*
+$8=$2/2*
+0 Add top and bottom rectangles. *
+22,1,$1-$3-$3,$3,0-$9+$3-$4,$8-$3-$5,0*
+22,1,$1-$3-$3,$3,0-$9+$3-$4,0-$8-$5,0*
+0 Add circles at the corners. *
+1,1,$3+$3,0-$4+$9-$3,0-$5+$8-$3*
+1,1,$3+$3,0-$4-$9+$3,0-$5+$8-$3*
+1,1,$3+$3,0-$4-$9+$3,0-$5-$8+$3*
+1,1,$3+$3,0-$4+$9-$3,0-$5-$8+$3*%

@@ -1,15 +1,19 @@
 package gerber_rs274x
 
 type OutlinePrimitive struct {
-	exposure Modifier
-	nPoints Modifier
-	startX Modifier
-	startY Modifier
-	subsequentX []Modifier
-	subsequentY []Modifier
-	rotationAngle Modifier
+	exposure ApertureMacroExpression
+	nPoints ApertureMacroExpression
+	startX ApertureMacroExpression
+	startY ApertureMacroExpression
+	subsequentX []ApertureMacroExpression
+	subsequentY []ApertureMacroExpression
+	rotationAngle ApertureMacroExpression
 }
 
-func (outline* OutlinePrimitive) PrimitivePlaceholder() {
+func (primitive *OutlinePrimitive) AperturePrimitivePlaceholder() {
+
+}
+
+func (primitive *OutlinePrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }

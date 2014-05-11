@@ -1,14 +1,18 @@
 package gerber_rs274x
 
 type PolygonPrimitive struct {
-	exposure Modifier
-	nVertices Modifier
-	centerX Modifier
-	centerY Modifier
-	diameter Modifier
-	rotationAngle Modifier
+	exposure ApertureMacroExpression
+	nVertices ApertureMacroExpression
+	centerX ApertureMacroExpression
+	centerY ApertureMacroExpression
+	diameter ApertureMacroExpression
+	rotationAngle ApertureMacroExpression
 }
 
-func (polygon* PolygonPrimitive) PrimitivePlaceholder() {
+func (primitive *PolygonPrimitive) AperturePrimitivePlaceholder() {
+
+}
+
+func (primitive *PolygonPrimitive) ApertureMacroDataBlockPlaceholder() {
 
 }

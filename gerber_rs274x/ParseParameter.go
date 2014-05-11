@@ -501,8 +501,21 @@ func parseApertureHole(aperture Aperture, holeModifiers []string) error {
 }
 
 func parseAMParameter(amParameter *ApertureMacroParameter, restOfParameter string) (DataBlock, error) {
-
-	return amParameter,nil
+	// First, split the various data blocks apart
+	blocks := strings.Split(restOfParameter, "*")
+	
+	fmt.Printf("Split AM blocks: %v\n", blocks)
+	
+	// The aperture macro parameter must have at least one block (the name)
+	if len(blocks) < 1 {
+		return nil,fmt.Errorf("Aperture Macro must have at least one data block")
+	}
+	
+	// Populate the name
+	amParameter.macroName = blocks[0]
+	
+	// Parse the rest of the macro
+	return parseApertureMacro(amParameter, blocks[1:])
 }
 
 func parseSRParameter(srParameter *StepAndRepeatParameter, restOfParameter string) (DataBlock, error) {

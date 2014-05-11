@@ -25,27 +25,16 @@ func main() {
 		} else {
 			inputFile.Close()
 			
+			if parsedFile == nil {
+			
+			}
+			
 			outputFileName := filepath.Base(os.Args[1] + ".png")
 			
 			if err := gerber_rs274x.GenerateSurface(outputFileName, parsedFile); err != nil {
 				fmt.Printf("Error generating PNG file: %s\n", err.Error())
 				os.Exit(5)
 			}
-		
-			/*
-			if outputFile,err := os.Create(filepath.Base(os.Args[1]) + ".svg"); err != nil {
-				fmt.Printf("Error opening output file %s: %s\n", filepath.Base(os.Args[1]) + ".svg", err.Error())
-				os.Exit(4) 
-			} else {
-				if err := gerber_rs274x.GenerateSurface(outputFile, parsedFile); err != nil {
-					outputFile.Close()
-					fmt.Printf("Error generating SVG file: %s\n", err.Error())
-					os.Exit(5)
-				} else {
-					outputFile.Close()
-				}
-			}
-			*/
 		}
 	}
 }
