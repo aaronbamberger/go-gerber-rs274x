@@ -127,8 +127,8 @@ func ParseGerberFile(in io.Reader) (parsedFile []DataBlock, err error) {
 
 func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	
-	width := 1000
-	height := 500
+	width := 800
+	height := 800
 	
 	// First, need to do a full render of the file, just keeping track of the bounds
 	// of the generated image, so we can do the proper scaling when we render it for real

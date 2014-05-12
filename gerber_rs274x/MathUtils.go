@@ -26,3 +26,20 @@ func convertAngleBetweenCoordinateFrames(angle float64) (convertedAngle float64)
 	
 	return angle
 }
+
+func snapCoordinate(coord float64) float64 {
+	if (math.Ceil(coord) - coord) > 0.5 {
+		return math.Floor(coord) + 0.5
+	} else {
+		return math.Ceil(coord) + 0.5
+	}
+}
+
+func lawOfCosines(aX float64, aY float64, bX float64, bY float64, cX float64, cY float64) (angle float64) {
+	// Use the law of cosines to compute an interior angle of a triangle, given all 3 points
+	sideA := math.Hypot(bX - cX, bY - cY)
+	sideB := math.Hypot(aX - cX, aY - cY)
+	sideC := math.Hypot(aX - bX, aY - bY)
+	
+	return math.Acos((math.Pow(sideA, 2) + math.Pow(sideB, 2) - math.Pow(sideC, 2)) / (2 * sideA * sideB))
+}

@@ -21,6 +21,7 @@ type AperturePrimitive interface {
 	ApertureMacroDataBlock
 	AperturePrimitivePlaceholder()
 	GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64)
+	DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error
 }
 
 type ApertureMacroVariableDefinition struct {
@@ -33,12 +34,14 @@ type ApertureMacroComment struct {
 }
 
 func (apertureMacro *ApertureMacroParameter) ProcessDataBlockBoundsCheck(imageBounds *ImageBounds, gfxState *GraphicsState) error {
+	// Save the macro in the graphics state for use during bounds checking
 	gfxState.apertureMacros[apertureMacro.macroName] = apertureMacro.dataBlocks
 	return nil
 }
 
 func (apertureMacro *ApertureMacroParameter) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
-	//TODO: Implement this
+	// Save the macro in the graphics state for use during rendering
+	gfxState.apertureMacros[apertureMacro.macroName] = apertureMacro.dataBlocks
 	return nil
 }
 

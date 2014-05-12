@@ -2,6 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type OutlinePrimitive struct {
@@ -25,6 +26,11 @@ func (primitive *OutlinePrimitive) ApertureMacroDataBlockPlaceholder() {
 func (primitive *OutlinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64) {
 	//TODO: Implement
 	return 0.0,0.0,0.0,0.0
+}
+
+func (primitive *OutlinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+	//TODO: Implement
+	return nil
 }
 
 func (primitive *OutlinePrimitive) String() string {

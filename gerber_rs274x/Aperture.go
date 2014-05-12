@@ -8,7 +8,7 @@ type Aperture interface {
 	AperturePlaceholder()
 	SetHole(hole Hole)
 	GetHole() Hole
-	GetMinSize() float64
+	GetMinSize(gfxState *GraphicsState) float64
 	DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error
 	DrawApertureBoundsCheck(bounds *ImageBounds, gfxState *GraphicsState, x float64, y float64) error
 	

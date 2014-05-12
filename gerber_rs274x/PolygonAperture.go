@@ -26,7 +26,7 @@ func (aperture *PolygonAperture) SetHole(hole Hole) {
 	aperture.Hole = hole
 }
 
-func (aperture *PolygonAperture) GetMinSize() float64 {
+func (aperture *PolygonAperture) GetMinSize(gfxState *GraphicsState) float64 {
 	return aperture.outerDiameter / 2.0
 }
 

@@ -25,7 +25,7 @@ func (aperture *RectangleAperture) SetHole(hole Hole) {
 	aperture.Hole = hole
 }
 
-func (aperture *RectangleAperture) GetMinSize() float64 {
+func (aperture *RectangleAperture) GetMinSize(gfxState *GraphicsState) float64 {
 	return math.Min(aperture.xSize / 2.0, aperture.ySize / 2.0) 
 }
 

@@ -35,65 +35,140 @@ func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBou
 	
 	// Next, if this interpolation has a valid operation code, perform the operation
 	if interpolation.opCodeValid {
+		newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
+		
 		switch interpolation.opCode {
 			case INTERPOLATE_OPERATION:
-				newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
-			
-				if gfxState.regionModeOn {
-					//TODO: Do a better job than this, this is just a quick hack
-					//It works for linear segments, but not for arcs
-					xMin := math.Min(gfxState.currentX, newX)
-					xMax := math.Max(gfxState.currentX, newX)
-					yMin := math.Min(gfxState.currentY, newY)
-					yMax := math.Max(gfxState.currentY, newY)
-					bounds.updateBounds(xMin, xMax, yMin, yMax)
-					
+				if !gfxState.apertureSet {
+					return fmt.Errorf("Attempt to check interpolation bounds before aperture set")
+				}
+				
+				if aperture,found := gfxState.apertures[gfxState.currentAperture]; !found {
+					return fmt.Errorf("Attempt to use aperture %d in bounds check before it has been defined", gfxState.currentAperture)
 				} else {
-					if (epsilonEquals(newX, gfxState.currentX, gfxState.filePrecision)) {
-						// Vertical line
-						if newY > gfxState.currentY {
-							for y := gfxState.currentY; y <= newY; y += gfxState.filePrecision {
-								if err := drawApertureBoundsCheck(bounds, gfxState, newX, y); err != nil {
-									return err
-								}
-							}
-						} else {
-							for y := gfxState.currentY; y >= newY; y -= gfxState.filePrecision {
-								if err := drawApertureBoundsCheck(bounds, gfxState, newX, y); err != nil {
-									return err
-								}
-							}
-						}
-					} else if (epsilonEquals(newY, gfxState.currentY, gfxState.filePrecision)) {
-						// Horizontal line
-						if newX > gfxState.currentX {
-							for x := gfxState.currentX; x <= newX; x += gfxState.filePrecision {
-								if err := drawApertureBoundsCheck(bounds, gfxState, x, newY); err != nil {
-									return err
-								}
-							}
-						} else {
-							for x := gfxState.currentX; x >= newX; x -= gfxState.filePrecision {
-								if err := drawApertureBoundsCheck(bounds, gfxState, x, newY); err != nil {
-									return err
-								}
-							}
-						}
+					apertureMinSize := aperture.GetMinSize(gfxState)
+					
+					if gfxState.regionModeOn {
+						//TODO: Do a better job than this, this is just a quick hack
+						//It works for linear segments, but not for arcs
+						xMin := math.Min(gfxState.currentX, newX)
+						xMax := math.Max(gfxState.currentX, newX)
+						yMin := math.Min(gfxState.currentY, newY)
+						yMax := math.Max(gfxState.currentY, newY)
+						bounds.updateBounds(xMin, xMax, yMin, yMax)
+						
 					} else {
-						// Any other line
+						switch gfxState.currentInterpolationMode {
+							case LINEAR_INTERPOLATION:
+								// Update the bounds with the new endpoint (the start point was accounted for in a previous operation)
+								bounds.updateBoundsAperture(newX, newY, apertureMinSize)
+								
+								// Finally, update the graphics state with the new end coordinate
+								gfxState.updateCurrentCoordinate(newX, newY)
+								
+							case CIRCULAR_INTERPOLATION_CLOCKWISE:
+								radius := math.Hypot(newX - centerX, newY - centerY)
+								point1X := centerX + (math.Cos(angle1) * radius)
+								point1Y := centerY + (math.Sin(angle1) * radius)
+								point2X := centerX + (math.Cos(angle2) * radius)
+								point2Y := centerY + (math.Sin(angle2) * radius)
+								
+								// Update the bounds with both endpoints
+								bounds.updateBoundsAperture(point1X, point1Y, apertureMinSize)
+								bounds.updateBoundsAperture(point2X, point2Y, apertureMinSize)
+								
+								// If the two angles span one of the axes, also update the bounds with the point
+								// along that axis at a distance of the radius of the arc (the max distance in that direction that the arc will cover)
+								if gfxState.currentQuadrantMode == SINGLE_QUADRANT_MODE {
+									if (angle1 >= 0.0) && (angle2 <= 0.0) {
+										// The angle spans the positive x-axis
+										bounds.updateBoundsAperture(centerX + radius, centerY, apertureMinSize)
+									} else if (angle1 >= (math.Pi / 2.0)) && (angle2 <= (math.Pi / 2.0)) {
+										// The angle spans the posituve y-axis
+										bounds.updateBoundsAperture(centerX, centerY + radius, apertureMinSize)
+									} else if (angle1 <= math.Pi) && (angle2 >= -math.Pi) {
+										// The angle spans the negative x-axis
+										bounds.updateBoundsAperture(centerX - radius, centerY, apertureMinSize)
+									} else if (angle1 <= -(math.Pi / 2.0)) && (angle2 >= -(math.Pi / 2.0)) {
+										// The angle spans the negative y-axis
+										bounds.updateBoundsAperture(centerX, centerY - radius, apertureMinSize)
+									} 
+								} else {
+									//TODO: Finish converting this to the new bounds check
+									if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+										// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+										// TODO: This feels hacky, see if I can come up with a better way to handle this
+										angle2 -= (2.0 * math.Pi)
+									}
+									angleStep := gfxState.filePrecision / radius
+									
+									for angle := angle1; angle > angle2; angle -= angleStep {
+										offsetX := radius * math.Cos(angle)
+										offsetY := radius * math.Sin(angle)
+										if err := drawApertureBoundsCheck(bounds, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+											return err
+										} 
+									}
+									
+									// Make sure we draw the aperture at the actual end coordinate.
+									// NOTE: This is probably redundant, but because of how I'm optimizing the
+									// coordinate stepping, it's possible that we won't exactly hit the end,
+									// so we do it here again just in case
+									if err := drawApertureBoundsCheck(bounds, gfxState, newX, newY); err != nil {
+										return err
+									}
+								}
+								
+								// Finally, update the graphics state with the new end coordinate
+								gfxState.updateCurrentCoordinate(newX, newY)
+							
+							case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+								if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+									// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+									// TODO: This feels hacky, see if I can come up with a better way to handle this
+									angle2 += (2.0 * math.Pi)
+								}
+								radius := math.Hypot(newX - centerX, newY - centerY)
+								angleStep := gfxState.filePrecision / radius
+								
+								for angle := angle1; angle < angle2; angle += angleStep {
+									offsetX := radius * math.Cos(angle)
+									offsetY := radius * math.Sin(angle)
+									if err := drawApertureBoundsCheck(bounds, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+										return err
+									} 
+								}
+								
+								// Make sure we draw the aperture at the actual end coordinate.
+								// NOTE: This is probably redundant, but because of how I'm optimizing the
+								// coordinate stepping, it's possible that we won't exactly hit the end,
+								// so we do it here again just in case
+								if err := drawApertureBoundsCheck(bounds, gfxState, newX, newY); err != nil {
+									return err
+								}
+								
+								// Finally, update the graphics state with the new end coordinate
+								gfxState.updateCurrentCoordinate(newX, newY)
+						}
 					}
 				}
 				
-				gfxState.updateCurrentCoordinate(newX, newY)
-				
 			case MOVE_OPERATION:
-				newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
+				// Since this is just a move, the mins and maxes are the same
+				bounds.updateBounds(newX, newX, newY, newY)
 				gfxState.updateCurrentCoordinate(newX, newY)
 			
 			case FLASH_OPERATION:
-				newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
-				gfxState.updateCurrentCoordinate(newX, newY)
-				return drawApertureBoundsCheck(bounds, gfxState, gfxState.currentX, gfxState.currentY)
+				if !gfxState.apertureSet {
+					return fmt.Errorf("Attempt to check interpolation bounds before aperture set")
+				}
+				
+				if aperture,found := gfxState.apertures[gfxState.currentAperture]; !found {
+					return fmt.Errorf("Attempt to use aperture %d in bounds check before it has been defined", gfxState.currentAperture)
+				} else {
+					bounds.updateBoundsAperture(newX, newY, aperture.GetMinSize(gfxState))
+					gfxState.updateCurrentCoordinate(newX, newY)	
+				}
 		}
 	}
 	
@@ -101,8 +176,6 @@ func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBou
 }
 
 func (interpolation *Interpolation) ProcessDataBlockSurface(surface *cairo.Surface, gfxState *GraphicsState) error {
-	//TODO: This is the hard one
-	
 	// First, if this interpolation has a valid function code, update the graphics state
 	if interpolation.fnCodeValid {
 		switch interpolation.fnCode {
@@ -134,122 +207,127 @@ func drawApertureBoundsCheck(bounds *ImageBounds, gfxState *GraphicsState, x flo
 	return nil
 }
 
-func drawAperture(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
-	if !gfxState.apertureSet {
-		return fmt.Errorf("Attempt to use aperture before current aperture has been defined")
-	}
-	
-	gfxState.apertures[gfxState.currentAperture].DrawApertureSurface(surface, gfxState, x, y)
-
-	return nil
-}
-
 func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface, gfxState *GraphicsState) error {
+	newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
+
 	switch interpolation.opCode {
 		case INTERPOLATE_OPERATION:
-			switch gfxState.currentInterpolationMode {
-				case LINEAR_INTERPOLATION:
-					newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
-					lineAngle := math.Atan2(newY - gfxState.currentY, newX - gfxState.currentX)
-					lineLength := math.Hypot(newX - gfxState.currentX, newY - gfxState.currentY)
-					totalSteps := lineLength / gfxState.drawPrecision
-					xDrawStep := gfxState.drawPrecision * math.Cos(lineAngle)
-					yDrawStep := gfxState.drawPrecision * math.Sin(lineAngle)
-					
-					for x,y,step := gfxState.currentX,gfxState.currentY,0.0; step < totalSteps; x,y,step = x + xDrawStep,y + yDrawStep,step + 1.0 {
-						if err := drawAperture(surface, gfxState, x, y); err != nil {
+			if !gfxState.apertureSet {
+				return fmt.Errorf("Attempt to draw before aperture set")
+			}
+			
+			if aperture,found := gfxState.apertures[gfxState.currentAperture]; !found {
+				return fmt.Errorf("Attempt to use aperture %d before it has been defined", gfxState.currentAperture)
+			} else {
+				apertureMinSize := aperture.GetMinSize(gfxState)
+				
+				switch gfxState.currentInterpolationMode {
+					case LINEAR_INTERPOLATION:
+						lineAngle := math.Atan2(newY - gfxState.currentY, newX - gfxState.currentX)
+						lineLength := math.Hypot(newX - gfxState.currentX, newY - gfxState.currentY)
+						totalSteps := lineLength / apertureMinSize
+						xDrawStep := apertureMinSize * math.Cos(lineAngle)
+						yDrawStep := apertureMinSize * math.Sin(lineAngle)
+						
+						for x,y,step := gfxState.currentX,gfxState.currentY,0.0; step < totalSteps; x,y,step = x + xDrawStep,y + yDrawStep,step + 1.0 {
+							if err := aperture.DrawApertureSurface(surface, gfxState, x, y); err != nil {
+								return err
+							}
+						}
+						
+						// Make sure we draw the aperture at the actual end coordinate.
+						// NOTE: This is probably redundant, but because of how I'm optimizing the
+						// coordinate stepping, it's possible that we won't exactly hit the end,
+						// so we do it here again just in case
+						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
 						}
-					}
-					
-					// Make sure we draw the aperture at the actual end coordinate.
-					// NOTE: This is probably redundant, but because of how I'm optimizing the
-					// coordinate stepping, it's possible that we won't exactly hit the end,
-					// so we do it here again just in case
-					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
-						return err
-					}
-					
-					// Finally, update the graphics state with the new end coordinate
-					gfxState.updateCurrentCoordinate(newX, newY)
-					
-				case CIRCULAR_INTERPOLATION_CLOCKWISE:
-					newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
-					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-						// TODO: This feels hacky, see if I can come up with a better way to handle this
-						angle2 -= (2.0 * math.Pi)
-					}
-					radius := math.Hypot(newX - centerX, newY - centerY)
-					angleStep := gfxState.drawPrecision / radius
-					
-					for angle := angle1; angle > angle2; angle -= angleStep {
-						offsetX := radius * math.Cos(angle)
-						offsetY := radius * math.Sin(angle)
-						if err := drawAperture(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+						
+						// Finally, update the graphics state with the new end coordinate
+						gfxState.updateCurrentCoordinate(newX, newY)
+						
+					case CIRCULAR_INTERPOLATION_CLOCKWISE:
+						if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+							// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+							// TODO: This feels hacky, see if I can come up with a better way to handle this
+							angle2 -= (2.0 * math.Pi)
+						}
+						radius := math.Hypot(newX - centerX, newY - centerY)
+						angleStep := apertureMinSize / radius
+						
+						for angle := angle1; angle > angle2; angle -= angleStep {
+							offsetX := radius * math.Cos(angle)
+							offsetY := radius * math.Sin(angle)
+							if err := aperture.DrawApertureSurface(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+								return err
+							}
+						}
+						
+						// Make sure we draw the aperture at the actual end coordinate.
+						// NOTE: This is probably redundant, but because of how I'm optimizing the
+						// coordinate stepping, it's possible that we won't exactly hit the end,
+						// so we do it here again just in case
+						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
-						} 
-					}
+						}
+						
+						// Finally, update the graphics state with the new end coordinate
+						gfxState.updateCurrentCoordinate(newX, newY)
 					
-					// Make sure we draw the aperture at the actual end coordinate.
-					// NOTE: This is probably redundant, but because of how I'm optimizing the
-					// coordinate stepping, it's possible that we won't exactly hit the end,
-					// so we do it here again just in case
-					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
-						return err
-					}
-					
-					// Finally, update the graphics state with the new end coordinate
-					gfxState.updateCurrentCoordinate(newX, newY)
-				
-				case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
-					newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
-					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-						// TODO: This feels hacky, see if I can come up with a better way to handle this
-						angle2 += (2.0 * math.Pi)
-					}
-					radius := math.Hypot(newX - centerX, newY - centerY)
-					angleStep := gfxState.drawPrecision / radius
-					
-					for angle := angle1; angle < angle2; angle += angleStep {
-						offsetX := radius * math.Cos(angle)
-						offsetY := radius * math.Sin(angle)
-						if err := drawAperture(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+					case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+						if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
+							// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
+							// TODO: This feels hacky, see if I can come up with a better way to handle this
+							angle2 += (2.0 * math.Pi)
+						}
+						radius := math.Hypot(newX - centerX, newY - centerY)
+						angleStep := apertureMinSize / radius
+						
+						for angle := angle1; angle < angle2; angle += angleStep {
+							offsetX := radius * math.Cos(angle)
+							offsetY := radius * math.Sin(angle)
+							if err := aperture.DrawApertureSurface(surface, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
+								return err
+							}
+						}
+						
+						// Make sure we draw the aperture at the actual end coordinate.
+						// NOTE: This is probably redundant, but because of how I'm optimizing the
+						// coordinate stepping, it's possible that we won't exactly hit the end,
+						// so we do it here again just in case
+						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
-						} 
-					}
-					
-					// Make sure we draw the aperture at the actual end coordinate.
-					// NOTE: This is probably redundant, but because of how I'm optimizing the
-					// coordinate stepping, it's possible that we won't exactly hit the end,
-					// so we do it here again just in case
-					if err := drawAperture(surface, gfxState, newX, newY); err != nil {
-						return err
-					}
-					
-					// Finally, update the graphics state with the new end coordinate
-					gfxState.updateCurrentCoordinate(newX, newY)
+						}
+						
+						// Finally, update the graphics state with the new end coordinate
+						gfxState.updateCurrentCoordinate(newX, newY)
+				}
 			}
 			
 		case MOVE_OPERATION:
-			newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
 			gfxState.updateCurrentCoordinate(newX, newY)
 		
 		case FLASH_OPERATION:
-			newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
-			gfxState.updateCurrentCoordinate(newX, newY)
-			return drawAperture(surface, gfxState, gfxState.currentX, gfxState.currentY)
+			if !gfxState.apertureSet {
+				return fmt.Errorf("Attempt to draw before aperture set")
+			}
+			
+			if aperture,found := gfxState.apertures[gfxState.currentAperture]; !found {
+				return fmt.Errorf("Attempt to use aperture %d before it has been defined", gfxState.currentAperture)
+			} else {
+				gfxState.updateCurrentCoordinate(newX, newY)
+				return aperture.DrawApertureSurface(surface, gfxState, gfxState.currentX, gfxState.currentY)	
+			}
 	}
 	
 	return nil
 }
 
 func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, gfxState *GraphicsState) error {
+	newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
+
 	switch interpolation.opCode {
 		case INTERPOLATE_OPERATION:
-			newX,newY,centerX,centerY,angle1,angle2 := interpolation.getNewCoordinate(gfxState)
-			
 			// Add the new segment to the current surface path
 			switch gfxState.currentInterpolationMode {
 				case LINEAR_INTERPOLATION:
@@ -301,7 +379,6 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 			surface.Fill()
 			
 			// Now, update the current point
-			newX,newY,_,_,_,_ := interpolation.getNewCoordinate(gfxState)
 			gfxState.updateCurrentCoordinate(newX, newY)
 		
 		case FLASH_OPERATION:
@@ -384,15 +461,6 @@ func (interpolation *Interpolation) getNewCoordinate(gfxState *GraphicsState) (n
 	}
 	
 	return
-}
-
-func lawOfCosines(aX float64, aY float64, bX float64, bY float64, cX float64, cY float64) (angle float64) {
-	// Use the law of cosines to compute an interior angle of a triangle, given all 3 points
-	sideA := math.Hypot(bX - cX, bY - cY)
-	sideB := math.Hypot(aX - cX, aY - cY)
-	sideC := math.Hypot(aX - bX, aY - bY)
-	
-	return math.Acos((math.Pow(sideA, 2) + math.Pow(sideB, 2) - math.Pow(sideC, 2)) / (2 * sideA * sideB))
 }
 
 func (interpolation *Interpolation) String() string {

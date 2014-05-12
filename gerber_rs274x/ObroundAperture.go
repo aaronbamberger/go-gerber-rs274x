@@ -25,7 +25,7 @@ func (aperture *ObroundAperture) SetHole(hole Hole) {
 	aperture.Hole = hole
 }
 
-func (aperture *ObroundAperture) GetMinSize() float64 {
+func (aperture *ObroundAperture) GetMinSize(gfxState *GraphicsState) float64 {
 	return math.Min(aperture.xSize / 2.0, aperture.ySize / 2.0)
 }
 

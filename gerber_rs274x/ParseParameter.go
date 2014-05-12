@@ -459,13 +459,15 @@ func parseMacroAperture(adParameter *ApertureDefinitionParameter, name string, m
 	aperture.macroName = name
 	aperture.env = NewExpressionEnvironment()
 	
-	// Parse the modifiers
-	splitModifiers := strings.Split(modifiers, "X")
-	for num,val := range splitModifiers {
-		if parsedVal,err := strconv.ParseFloat(val, 64); err != nil {
-			return nil,err
-		} else {
-			aperture.env.setVariableValue(num + 1, parsedVal)
+	// If there are modifiers, parse them
+	if len(modifiers) > 0 {
+		splitModifiers := strings.Split(modifiers, "X")
+		for num,val := range splitModifiers {
+			if parsedVal,err := strconv.ParseFloat(val, 64); err != nil {
+				return nil,err
+			} else {
+				aperture.env.setVariableValue(num + 1, parsedVal)
+			}
 		}
 	}
 	

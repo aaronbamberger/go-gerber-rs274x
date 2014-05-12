@@ -2,6 +2,8 @@ package gerber_rs274x
 
 import (
 	"fmt"
+	"math"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type ThermalPrimitive struct {
@@ -27,6 +29,65 @@ func (primitive *ThermalPrimitive) GetPrimitiveBounds(env *ExpressionEnvironment
 	radius := primitive.outerDiameter.EvaluateExpression(env) / 2.0
 
 	return centerX - radius,centerX + radius,centerY - radius,centerY + radius
+}
+
+func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+	// If there is a rotation angle defined, first check that the center is at the origin
+	// (rotations are only allowed if the center is at the origin)
+	centerX := primitive.centerX.EvaluateExpression(env) * scaleFactor
+	centerY := primitive.centerY.EvaluateExpression(env) * scaleFactor
+	rotation := primitive.rotationAngle.EvaluateExpression(env) * (math.Pi / 180.0)
+	
+	if rotation != 0.0 && (centerX != 0.0 || centerY != 0.0) {
+		return fmt.Errorf("Thermal primitive rotation is only allowed if the center is at the origin")
+	}
+	
+	// Now that we've checked the center, first apply a translation to account for the offset,
+	// then apply the rotation
+	surface.Save()
+	surface.Translate(xOffset * scaleFactor, yOffset * scaleFactor)
+	surface.Rotate(rotation)
+	
+	surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
+	
+	// Now, draw the thermal
+	outerRadius := (primitive.outerDiameter.EvaluateExpression(env) / 2.0) * scaleFactor
+	innerRadius := (primitive.innerDiameter.EvaluateExpression(env) / 2.0) * scaleFactor
+	halfGapThickness := (primitive.gapThickness.EvaluateExpression(env) / 2.0) * scaleFactor
+	
+	outerStartX := centerX + halfGapThickness
+	outerStartY := centerY + outerRadius
+	outerEndX := centerX + outerRadius
+	outerEndY := centerY + halfGapThickness
+	innerStartX := centerX + innerRadius
+	innerStartY := outerEndY
+	innerEndX := outerStartX
+	innerEndY := centerY + innerRadius
+	outerStartAngle := math.Atan2(outerStartY, outerStartX)
+	outerEndAngle := math.Atan2(outerEndY, outerEndX)
+	innerStartAngle := math.Atan2(innerStartY, innerStartX)
+	innerEndAngle := math.Atan2(innerEndY, innerEndX)
+	
+	// Since the thermal is composed of 4 copies of the same shape, just rotated by 90 degrees,
+	// we draw the same shape 4 times, rotating the surface by 90 degrees each time
+	
+	for i := 0; i < 4; i++ {
+		// Rotate the surface
+		surface.Rotate((math.Pi / 2.0) * float64(i))
+	
+		//Draw one piece of the primitive
+		surface.MoveTo(outerStartX, outerStartY)
+		surface.ArcNegative(centerX, centerY, outerRadius, outerStartAngle, outerEndAngle)
+		surface.LineTo(innerStartX, innerStartY)
+		surface.Arc(centerX, centerY, innerRadius, innerStartAngle, innerEndAngle)
+		surface.LineTo(outerStartX, outerStartY)
+		surface.Fill()
+	}
+	
+	// Undo all surface transformations
+	surface.Restore()
+	
+	return nil
 }
 
 func (primitive *ThermalPrimitive) String() string {

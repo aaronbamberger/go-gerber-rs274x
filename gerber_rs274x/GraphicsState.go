@@ -18,7 +18,6 @@ type GraphicsState struct {
 	fileComplete bool
 	coordinateNotation CoordinateNotation
 	filePrecision float64
-	drawPrecision float64
 	ScalingParms
 	
 	// As we encounter aperture definitions, we save them
@@ -66,8 +65,6 @@ func newGraphicsState(bounds *ImageBounds, xImageSize int, yImageSize int) *Grap
 		// Compute offsets to apply to all coordinates to start them at zero and account for margins
 		graphicsState.xOffset = -(bounds.xMin * graphicsState.scaleFactor) + (xMargin / 2.0)
 		graphicsState.yOffset = -(bounds.yMin * graphicsState.scaleFactor) + (yMargin / 2.0)
-		
-		graphicsState.drawPrecision = bounds.smallestApertureSize
 	}
 	
 	// All other settings are fine with their go defaults

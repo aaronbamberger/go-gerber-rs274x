@@ -1,22 +1,16 @@
 package gerber_rs274x
 
-import (
-	"math"
-)
-
 type ImageBounds struct {
 	xMin float64
 	xMax float64
 	yMin float64
 	yMax float64
-	smallestApertureSize float64
 	boundsSet bool
 }
 
 func newImageBounds() *ImageBounds {
 	bounds := new(ImageBounds)
-	bounds.smallestApertureSize = math.MaxFloat64 // Start this at max double size, so the bounds determination logic works
-	// Everything else is ok as its default (0)
+	// For now, everything else is ok as its default (0), but this is here in case that needs to change
 	return bounds
 }
 
@@ -46,4 +40,15 @@ func (bounds *ImageBounds) updateBounds(xMin float64, xMax float64, yMin float64
 			bounds.yMax = yMax
 		}
 	}
+}
+
+func (bounds *ImageBounds) updateBoundsAperture(currentX float64, currentY float64, apertureMinSize float64) {
+	// Calculate the extents from the current point and the aperture min size
+	xMin := currentX - apertureMinSize
+	xMax := currentX + apertureMinSize
+	yMin := currentY - apertureMinSize
+	yMax := currentY + apertureMinSize
+	
+	// Use update bounds to do the actual work
+	bounds.updateBounds(xMin, xMax, yMin, yMax)
 }

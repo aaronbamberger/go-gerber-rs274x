@@ -24,7 +24,7 @@ func (aperture *CircleAperture) SetHole(hole Hole) {
 	aperture.Hole = hole
 }
 
-func (aperture *CircleAperture) GetMinSize() float64 {
+func (aperture *CircleAperture) GetMinSize(gfxState *GraphicsState) float64 {
 	return aperture.diameter / 2.0
 }
 

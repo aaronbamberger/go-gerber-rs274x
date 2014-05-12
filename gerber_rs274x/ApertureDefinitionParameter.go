@@ -20,14 +20,6 @@ func (apertureDefinition *ApertureDefinitionParameter) ProcessDataBlockBoundsChe
 	// Remember this aperture in the graphics state for later use
 	gfxState.apertures[apertureDefinition.apertureNumber] = apertureDefinition.aperture
 	
-	// Keep track of the smallest aperture definition we see
-	// This will be used as the minimum step size when stroking
-	// during image rendering
-	minSize := apertureDefinition.aperture.GetMinSize()
-	if minSize < imageBounds.smallestApertureSize {
-		imageBounds.smallestApertureSize = minSize
-	}
-	
 	return nil
 }
 

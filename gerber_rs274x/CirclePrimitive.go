@@ -2,6 +2,7 @@ package gerber_rs274x
 
 import (
 	"fmt"
+	cairo "github.com/ungerik/go-cairo"
 )
 
 type CirclePrimitive struct {
@@ -25,6 +26,11 @@ func (primitive *CirclePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment)
 	radius := primitive.diameter.EvaluateExpression(env) / 2.0
 
 	return centerX - radius,centerX + radius,centerY - radius,centerY + radius
+}
+
+func (primitive *CirclePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+	//TODO: Implement
+	return nil
 }
 
 func (primitive *CirclePrimitive) String() string {
