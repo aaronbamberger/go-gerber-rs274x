@@ -55,6 +55,69 @@ func (aperture *RectangleAperture) DrawApertureSurface(surface *cairo.Surface, g
 }
 
 func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
+	radiusX := aperture.xSize / 2.0
+	radiusY := aperture.ySize / 2.0
+	
+	var topLeftX float64
+	var topLeftY float64
+	var topRightX float64
+	var topRightY float64
+	var bottomLeftX float64
+	var bottomLeftY float64
+	var bottomRightX float64
+	var bottomRightY float64
+	
+	if startY < endY {
+		topLeftX = startX - radiusX
+		topRightX = endX - radiusX
+		bottomLeftX = startX + radiusX
+		bottomRightX = endX + radiusX
+	} else {
+		topLeftX = startX + radiusX
+		topRightX = endX + radiusX
+		bottomLeftX = startX - radiusX
+		bottomRightX = endX - radiusX
+	}
+	
+	if startX < endX {
+		topLeftY = startY + radiusY
+		topRightY = endY + radiusY
+		bottomLeftY = startY - radiusY
+		bottomRightY = endY - radiusY
+	} else {
+		topLeftY = endY + radiusY
+		topRightY = startY + radiusY
+		bottomLeftY = endY - radiusY
+		bottomRightY = startY - radiusY
+	}
+
+	scaledTopLeftX := ((topLeftX * gfxState.scaleFactor) + gfxState.xOffset)
+	scaledTopLeftY := ((topLeftY * gfxState.scaleFactor) + gfxState.yOffset)
+	scaledTopRightX := ((topRightX * gfxState.scaleFactor) + gfxState.xOffset)
+	scaledTopRightY := ((topRightY * gfxState.scaleFactor) + gfxState.yOffset)
+	scaledBottomLeftX := ((bottomLeftX * gfxState.scaleFactor) + gfxState.xOffset)
+	scaledBottomLeftY := ((bottomLeftY * gfxState.scaleFactor) + gfxState.yOffset)
+	scaledBottomRightX := ((bottomRightX * gfxState.scaleFactor) + gfxState.xOffset)
+	scaledBottomRightY := ((bottomRightY * gfxState.scaleFactor) + gfxState.yOffset)
+
+	if gfxState.currentLevelPolarity == DARK_POLARITY {
+		surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
+	} else {
+		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
+	}
+	
+	// Draw the stroke, except for the endpoints
+	surface.MoveTo(scaledTopLeftX, scaledTopLeftY)
+	surface.LineTo(scaledTopRightX, scaledTopRightY)
+	surface.LineTo(scaledBottomRightX, scaledBottomRightY)
+	surface.LineTo(scaledBottomLeftX, scaledBottomLeftY)
+	surface.LineTo(scaledTopLeftX, scaledTopLeftY)
+	surface.Fill()
+	
+	// Draw each of the endpoints by flashing the aperture at the endpoints
+	aperture.DrawApertureSurface(surface, gfxState, startX, startY)
+	aperture.DrawApertureSurface(surface, gfxState, endX, endY)
+
 	return nil
 }
 
@@ -75,6 +138,7 @@ func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *Graph
 	
 	// Construct the surface we're drawing to
 	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledWidth)), int(math.Ceil(scaledHeight)))
+	surface.SetAntialias(cairo.ANTIALIAS_NONE)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {

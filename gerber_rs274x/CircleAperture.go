@@ -54,6 +54,42 @@ func (aperture *CircleAperture) DrawApertureSurface(surface *cairo.Surface, gfxS
 }
 
 func (aperture *CircleAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
+	lineAngle := math.Atan2(endY - startY, endX - startX)
+	topAngle := lineAngle + (math.Pi / 2.0)
+	bottomAngle := lineAngle - (math.Pi / 2.0)
+	radius := aperture.diameter / 2.0
+	topOffsetX := radius * math.Cos(topAngle)
+	topOffsetY := radius * math.Sin(topAngle)
+	bottomOffsetX := radius * math.Cos(bottomAngle)
+	bottomOffsetY := radius * math.Sin(bottomAngle)
+	
+	topLeftX := ((startX + topOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
+	topLeftY := ((startY + topOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
+	topRightX := ((endX + topOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
+	topRightY := ((endY + topOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
+	bottomLeftX := ((startX + bottomOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
+	bottomLeftY := ((startY + bottomOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
+	bottomRightX := ((endX + bottomOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
+	bottomRightY := ((endY + bottomOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
+	
+	if gfxState.currentLevelPolarity == DARK_POLARITY {
+		surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
+	} else {
+		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
+	}
+	
+	// Draw the stroke, except for the endpoints
+	surface.MoveTo(topLeftX, topLeftY)
+	surface.LineTo(topRightX, topRightY)
+	surface.LineTo(bottomRightX, bottomRightY)
+	surface.LineTo(bottomLeftX, bottomLeftY)
+	surface.LineTo(topLeftX, topLeftY)
+	surface.Fill()
+	
+	// Draw each of the endpoints by flashing the aperture at the endpoints
+	aperture.DrawApertureSurface(surface, gfxState, startX, startY)
+	aperture.DrawApertureSurface(surface, gfxState, endX, endY)
+
 	return nil
 }
 
@@ -73,6 +109,7 @@ func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *Graphics
 	
 	// Construct the surface we're drawing to
 	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledDiameter)), int(math.Ceil(scaledDiameter)))
+	surface.SetAntialias(cairo.ANTIALIAS_GRAY)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {

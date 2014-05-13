@@ -149,6 +149,7 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	
 	// Construct the surface we're drawing to
 	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, width, height)
+	surface.SetAntialias(cairo.ANTIALIAS_NONE)
 	
 	// This is important for regions with cut-ins.  If we leave the fill rule the default (winding),
 	// cut-ins don't render correctly

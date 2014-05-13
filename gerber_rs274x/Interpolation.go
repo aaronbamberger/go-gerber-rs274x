@@ -196,6 +196,7 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 				
 				switch gfxState.currentInterpolationMode {
 					case LINEAR_INTERPOLATION:
+						/*
 						lineAngle := math.Atan2(newY - gfxState.currentY, newX - gfxState.currentX)
 						lineLength := math.Hypot(newX - gfxState.currentX, newY - gfxState.currentY)
 						totalSteps := lineLength / apertureMinSize
@@ -215,6 +216,8 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
 						}
+						*/
+						aperture.StrokeApertureLinear(surface, gfxState, gfxState.currentX, gfxState.currentY, newX, newY)
 						
 						// Finally, update the graphics state with the new end coordinate
 						gfxState.updateCurrentCoordinate(newX, newY)
