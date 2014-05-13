@@ -137,7 +137,7 @@ func nextParseState(char rune, numberAccumulator *string, expressionList *[]Aper
 		*numberAccumulator = *numberAccumulator + string(char)
 		return PARSING_LITERAL,nil
 		
-	} else if char == '+' || char == '-' || char == 'x' || char == '/' {
+	} else if char == '+' || char == '-' || char == 'x' || char == 'X' || char == '/' {
 		switch char {
 			case '+', '-':
 				done := false
@@ -162,7 +162,7 @@ func nextParseState(char rune, numberAccumulator *string, expressionList *[]Aper
 				}
 				fallthrough // We always want to push this new operator on the stack, so we fallthrough here
 			
-			case 'x', '/':
+			case 'x', 'X', '/':
 				switch char {
 					case '+':
 						stack.Push(&OperatorExpression{OPERATOR_ADD})
@@ -170,7 +170,7 @@ func nextParseState(char rune, numberAccumulator *string, expressionList *[]Aper
 					case '-':
 						stack.Push(&OperatorExpression{OPERATOR_SUBTRACT})
 					
-					case 'x':
+					case 'x', 'X':
 						stack.Push(&OperatorExpression{OPERATOR_MULTIPLY})
 					
 					case '/':

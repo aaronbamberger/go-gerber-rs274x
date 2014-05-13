@@ -17,6 +17,10 @@ func (aperture *ObroundAperture) AperturePlaceholder() {
 
 }
 
+func (aperture *ObroundAperture) GetApertureNumber() int {
+	return aperture.apertureNumber
+}
+
 func (aperture *ObroundAperture) GetHole() Hole {
 	return aperture.Hole
 }
@@ -48,28 +52,22 @@ func (aperture *ObroundAperture) DrawApertureSurface(surface *cairo.Surface, gfx
 	correctedX := ((x - (aperture.xSize / 2.0)) * gfxState.scaleFactor) + gfxState.xOffset
 	correctedY := ((y - (aperture.ySize / 2.0)) * gfxState.scaleFactor) + gfxState.yOffset
 	
-	// Draw the aperture
-	if gfxState.currentLevelPolarity == DARK_POLARITY {
-		surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
-	} else {
-		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
-	}
+	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY, 0.0, 0.0)
+}
 
-	if renderedAperture,found := gfxState.renderedApertures[aperture.apertureNumber]; !found {
-		// If this is the first use of this aperture, it hasn't been rendered yet,
-		// so go ahead and render it before we draw it
-		aperture.renderApertureToGraphicsState(gfxState)
-		renderedAperture = gfxState.renderedApertures[aperture.apertureNumber]
-		surface.MaskSurface(renderedAperture, correctedX, correctedY)
-	} else {
-		// Otherwise, just draw the previously rendered aperture
-		surface.MaskSurface(renderedAperture, correctedX, correctedY)
-	}
-	
+func (aperture *ObroundAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
 	return nil
 }
 
-func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
+func (aperture *ObroundAperture) StrokeApertureClockwise(surface *cairo.Surface, gfxState *GraphicsState, centerX float64, centerY float64, radius float64, startAngle float64, endAngle float64) error {
+	return nil
+}
+
+func (aperture *ObroundAperture) StrokeApertureCounterClockwise(surface *cairo.Surface, gfxState *GraphicsState, centerX float64, centerY float64, radius float64, startAngle float64, endAngle float64) error {
+	return nil
+}
+
+func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *GraphicsState, apertureOffsetX float64, apertureOffsetY float64) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	

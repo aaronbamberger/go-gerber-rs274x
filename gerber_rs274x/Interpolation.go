@@ -66,7 +66,7 @@ func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBou
 								// Finally, update the graphics state with the new end coordinate
 								gfxState.updateCurrentCoordinate(newX, newY)
 								
-							case CIRCULAR_INTERPOLATION_CLOCKWISE:
+							case CIRCULAR_INTERPOLATION_CLOCKWISE, CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
 								radius := math.Hypot(newX - centerX, newY - centerY)
 								point1X := centerX + (math.Cos(angle1) * radius)
 								point1Y := centerY + (math.Sin(angle1) * radius)
@@ -77,74 +77,57 @@ func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBou
 								bounds.updateBoundsAperture(point1X, point1Y, apertureMinSize)
 								bounds.updateBoundsAperture(point2X, point2Y, apertureMinSize)
 								
-								// If the two angles span one of the axes, also update the bounds with the point
-								// along that axis at a distance of the radius of the arc (the max distance in that direction that the arc will cover)
-								if gfxState.currentQuadrantMode == SINGLE_QUADRANT_MODE {
-									if (angle1 >= 0.0) && (angle2 <= 0.0) {
-										// The angle spans the positive x-axis
-										bounds.updateBoundsAperture(centerX + radius, centerY, apertureMinSize)
-									} else if (angle1 >= (math.Pi / 2.0)) && (angle2 <= (math.Pi / 2.0)) {
-										// The angle spans the posituve y-axis
-										bounds.updateBoundsAperture(centerX, centerY + radius, apertureMinSize)
-									} else if (angle1 <= math.Pi) && (angle2 >= -math.Pi) {
-										// The angle spans the negative x-axis
-										bounds.updateBoundsAperture(centerX - radius, centerY, apertureMinSize)
-									} else if (angle1 <= -(math.Pi / 2.0)) && (angle2 >= -(math.Pi / 2.0)) {
-										// The angle spans the negative y-axis
-										bounds.updateBoundsAperture(centerX, centerY - radius, apertureMinSize)
-									} 
-								} else {
-									//TODO: Finish converting this to the new bounds check
-									if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-										// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-										// TODO: This feels hacky, see if I can come up with a better way to handle this
-										angle2 -= (2.0 * math.Pi)
-									}
-									angleStep := gfxState.filePrecision / radius
-									
-									for angle := angle1; angle > angle2; angle -= angleStep {
-										offsetX := radius * math.Cos(angle)
-										offsetY := radius * math.Sin(angle)
-										if err := drawApertureBoundsCheck(bounds, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
-											return err
-										} 
-									}
-									
-									// Make sure we draw the aperture at the actual end coordinate.
-									// NOTE: This is probably redundant, but because of how I'm optimizing the
-									// coordinate stepping, it's possible that we won't exactly hit the end,
-									// so we do it here again just in case
-									if err := drawApertureBoundsCheck(bounds, gfxState, newX, newY); err != nil {
-										return err
-									}
-								}
-								
-								// Finally, update the graphics state with the new end coordinate
-								gfxState.updateCurrentCoordinate(newX, newY)
-							
-							case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
+								// Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle,
+								// so the arc spans all of the axes
 								if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-									// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-									// TODO: This feels hacky, see if I can come up with a better way to handle this
-									angle2 += (2.0 * math.Pi)
-								}
-								radius := math.Hypot(newX - centerX, newY - centerY)
-								angleStep := gfxState.filePrecision / radius
-								
-								for angle := angle1; angle < angle2; angle += angleStep {
-									offsetX := radius * math.Cos(angle)
-									offsetY := radius * math.Sin(angle)
-									if err := drawApertureBoundsCheck(bounds, gfxState, centerX + offsetX, centerY + offsetY); err != nil {
-										return err
-									} 
-								}
-								
-								// Make sure we draw the aperture at the actual end coordinate.
-								// NOTE: This is probably redundant, but because of how I'm optimizing the
-								// coordinate stepping, it's possible that we won't exactly hit the end,
-								// so we do it here again just in case
-								if err := drawApertureBoundsCheck(bounds, gfxState, newX, newY); err != nil {
-									return err
+									bounds.updateBoundsAperture(centerX, centerY + radius, apertureMinSize) // positive y-axis
+									bounds.updateBoundsAperture(centerX + radius, centerY, apertureMinSize) // positive x-axis
+									bounds.updateBoundsAperture(centerX, centerY - radius, apertureMinSize) // negative y-axis
+									bounds.updateBoundsAperture(centerX - radius, centerY, apertureMinSize) // negative x-axis
+								} else {
+									// Otherwise, if the two angles span one (or more, depending on quadrant mode) of the axes, also update the bounds with the point
+									// along that axis at a distance of the radius of the arc (the max distance in that direction that the arc will cover)
+									if gfxState.currentInterpolationMode == CIRCULAR_INTERPOLATION_CLOCKWISE {
+										if (angle1 >= (math.Pi / 2.0)) && (angle2 <= (math.Pi / 2.0)) {
+											// The angle spans the positive y-axis
+											bounds.updateBoundsAperture(centerX, centerY + radius, apertureMinSize)
+										}
+										
+										if (angle1 >= 0.0) && (angle2 <= 0.0) {
+											// The angle spans the positive x-axis
+											bounds.updateBoundsAperture(centerX + radius, centerY, apertureMinSize)
+										}
+										
+										if (angle1 >= -(math.Pi / 2.0)) && (angle2 <= -(math.Pi / 2.0)) {
+											// The angle spans the negative y-axis
+											bounds.updateBoundsAperture(centerX, centerY - radius, apertureMinSize)
+										}
+										
+										if (angle1 > -math.Pi) && (angle2 < math.Pi) {
+											// The angle spans the negative x-axis
+											bounds.updateBoundsAperture(centerX - radius, centerY, apertureMinSize)
+										}
+									} else {
+										if (angle1 <= (math.Pi / 2.0)) && (angle2 >= (math.Pi / 2.0)) {
+											// The angle spans the positive y-axis
+											bounds.updateBoundsAperture(centerX, centerY + radius, apertureMinSize)
+										}
+										
+										if (angle1 <= 0.0) && (angle2 >= 0.0) {
+											// The angle spans the positive x-axis
+											bounds.updateBoundsAperture(centerX + radius, centerY, apertureMinSize)
+										}
+										
+										if (angle1 <= -(math.Pi / 2.0)) && (angle2 >= -(math.Pi / 2.0)) {
+											// The angle spans the negative y-axis
+											bounds.updateBoundsAperture(centerX, centerY - radius, apertureMinSize)
+										}
+										
+										if (angle1 < math.Pi) && (angle2 > -math.Pi) {
+											// The angle spans the negative x-axis
+											bounds.updateBoundsAperture(centerX - radius, centerY, apertureMinSize)
+										}
+									}
 								}
 								
 								// Finally, update the graphics state with the new end coordinate
@@ -194,16 +177,6 @@ func (interpolation *Interpolation) ProcessDataBlockSurface(surface *cairo.Surfa
 		}
 	}
 	
-	return nil
-}
-
-func drawApertureBoundsCheck(bounds *ImageBounds, gfxState *GraphicsState, x float64, y float64) error {
-	if !gfxState.apertureSet {
-		return fmt.Errorf("Attempt to use aperture before current aperture has been defined")
-	}
-	
-	gfxState.apertures[gfxState.currentAperture].DrawApertureBoundsCheck(bounds, gfxState, x, y)
-
 	return nil
 }
 
