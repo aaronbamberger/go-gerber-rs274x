@@ -36,7 +36,7 @@ func (primitive *MoirePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) 
 	return centerX - maxRadius,centerX + maxRadius,centerY - maxRadius,centerY + maxRadius
 }
 
-func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
 	// If there is a rotation angle defined, first check that the center is at the origin
 	// (rotations are only allowed if the center is at the origin)
 	centerX := primitive.centerX.EvaluateExpression(env) * scaleFactor
@@ -50,7 +50,6 @@ func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, 
 	// Now that we've checked the center, first apply a translation to account for the offset,
 	// then apply the rotation
 	surface.Save()
-	surface.Translate(xOffset * scaleFactor, yOffset * scaleFactor)
 	surface.Rotate(rotation)
 	
 	surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)

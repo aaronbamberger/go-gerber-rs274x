@@ -48,10 +48,10 @@ func (aperture *RectangleAperture) DrawApertureBoundsCheck(bounds *ImageBounds, 
 }
 
 func (aperture *RectangleAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
-	correctedX := ((x - (aperture.xSize / 2.0)) * gfxState.scaleFactor) + gfxState.xOffset
-	correctedY := ((y - (aperture.ySize / 2.0)) * gfxState.scaleFactor) + gfxState.yOffset
+	correctedX := (x - (aperture.xSize / 2.0)) * gfxState.scaleFactor
+	correctedY := (y - (aperture.ySize / 2.0)) * gfxState.scaleFactor
 	
-	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY, 0.0, 0.0)
+	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
 func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
@@ -91,14 +91,14 @@ func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, 
 		bottomRightY = startY - radiusY
 	}
 
-	scaledTopLeftX := ((topLeftX * gfxState.scaleFactor) + gfxState.xOffset)
-	scaledTopLeftY := ((topLeftY * gfxState.scaleFactor) + gfxState.yOffset)
-	scaledTopRightX := ((topRightX * gfxState.scaleFactor) + gfxState.xOffset)
-	scaledTopRightY := ((topRightY * gfxState.scaleFactor) + gfxState.yOffset)
-	scaledBottomLeftX := ((bottomLeftX * gfxState.scaleFactor) + gfxState.xOffset)
-	scaledBottomLeftY := ((bottomLeftY * gfxState.scaleFactor) + gfxState.yOffset)
-	scaledBottomRightX := ((bottomRightX * gfxState.scaleFactor) + gfxState.xOffset)
-	scaledBottomRightY := ((bottomRightY * gfxState.scaleFactor) + gfxState.yOffset)
+	scaledTopLeftX := topLeftX * gfxState.scaleFactor
+	scaledTopLeftY := topLeftY * gfxState.scaleFactor
+	scaledTopRightX := topRightX * gfxState.scaleFactor
+	scaledTopRightY := topRightY * gfxState.scaleFactor
+	scaledBottomLeftX := bottomLeftX * gfxState.scaleFactor
+	scaledBottomLeftY := bottomLeftY * gfxState.scaleFactor
+	scaledBottomRightX := bottomRightX * gfxState.scaleFactor
+	scaledBottomRightY := bottomRightY * gfxState.scaleFactor
 
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
 		surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
@@ -129,7 +129,7 @@ func (aperture *RectangleAperture) StrokeApertureCounterClockwise(surface *cairo
 	return nil
 }
 
-func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *GraphicsState, apertureOffsetX float64, apertureOffsetY float64) {
+func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	

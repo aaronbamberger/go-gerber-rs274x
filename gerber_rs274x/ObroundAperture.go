@@ -49,10 +49,10 @@ func (aperture *ObroundAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gf
 
 func (aperture *ObroundAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
 	
-	correctedX := ((x - (aperture.xSize / 2.0)) * gfxState.scaleFactor) + gfxState.xOffset
-	correctedY := ((y - (aperture.ySize / 2.0)) * gfxState.scaleFactor) + gfxState.yOffset
+	correctedX := (x - (aperture.xSize / 2.0)) * gfxState.scaleFactor
+	correctedY := (y - (aperture.ySize / 2.0)) * gfxState.scaleFactor
 	
-	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY, 0.0, 0.0)
+	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
 func (aperture *ObroundAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
@@ -67,7 +67,7 @@ func (aperture *ObroundAperture) StrokeApertureCounterClockwise(surface *cairo.S
 	return nil
 }
 
-func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *GraphicsState, apertureOffsetX float64, apertureOffsetY float64) {
+func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	

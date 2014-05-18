@@ -28,7 +28,7 @@ func (primitive *CirclePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment)
 	return centerX - radius,centerX + radius,centerY - radius,centerY + radius
 }
 
-func (primitive *CirclePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+func (primitive *CirclePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
 	//TODO: Implement
 	return nil
 }

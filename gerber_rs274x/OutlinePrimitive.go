@@ -28,7 +28,7 @@ func (primitive *OutlinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment
 	return 0.0,0.0,0.0,0.0
 }
 
-func (primitive *OutlinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error {
+func (primitive *OutlinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
 	//TODO: Implement
 	return nil
 }

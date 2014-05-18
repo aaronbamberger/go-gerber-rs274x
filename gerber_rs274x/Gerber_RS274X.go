@@ -157,6 +157,8 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	// Invert the Y-axis.  This is to correct for the difference in coordinate frames between the gerber file and cairo
 	surface.Scale(1.0, -1.0)
 	surface.Translate(0.0, float64(-height))
+	// Apply the x and y offsets as translations to the surface
+	surface.Translate(gfxState.xOffset, gfxState.yOffset)
 	
 	for _,dataBlock := range parsedFile {
 		if err := dataBlock.ProcessDataBlockSurface(surface, gfxState); err != nil {

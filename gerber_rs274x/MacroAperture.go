@@ -70,14 +70,13 @@ func (aperture *MacroAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gfxS
 }
 
 func (aperture *MacroAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
+	radiusX := (aperture.xMax - aperture.xMin) / 2.0
+	radiusY := (aperture.yMax - aperture.yMin) / 2.0
 	
-	apertureOffsetX := -aperture.xMin
-	apertureOffsetY := -aperture.yMin
+	correctedX := (x - radiusX) * gfxState.scaleFactor
+	correctedY := (y - radiusY) * gfxState.scaleFactor
 	
-	correctedX := ((x - apertureOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
-	correctedY := ((y - apertureOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
-	
-	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY, apertureOffsetX, apertureOffsetY)
+	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
 func (aperture *MacroAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
@@ -92,7 +91,7 @@ func (aperture *MacroAperture) StrokeApertureCounterClockwise(surface *cairo.Sur
 	return nil
 }
 
-func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsState, apertureOffsetX float64, apertureOffsetY float64) {
+func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
@@ -101,6 +100,8 @@ func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsS
 	
 	// Construct the surface we're drawing to
 	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(xSize)), int(math.Ceil(ySize)))
+	// Apply an offset to the surface, so that the origin is actually in the center of the image
+	surface.Translate(xSize / 2.0, ySize / 2.0)
 	
 	// Set fill rule to Even/Odd so that rings render correctly
 	surface.SetFillRule(cairo.FILL_RULE_EVEN_ODD)
@@ -127,7 +128,7 @@ func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsS
 					aperture.env.setVariableValue(dataBlockValue.variableNumber, dataBlockValue.value.EvaluateExpression(aperture.env))
 					
 				case AperturePrimitive:
-					if err := dataBlockValue.DrawPrimitiveToSurface(surface, aperture.env, gfxState.scaleFactor, apertureOffsetX, apertureOffsetY); err != nil {
+					if err := dataBlockValue.DrawPrimitiveToSurface(surface, aperture.env, gfxState.scaleFactor); err != nil {
 						// TODO: Figure out the error behavior, just print a warning for now
 						fmt.Printf("Error while attempting to render primitive on macro aperture %s: %s\n", aperture.macroName, err.Error())
 					}		

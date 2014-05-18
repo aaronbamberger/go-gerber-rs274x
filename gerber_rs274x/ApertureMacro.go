@@ -21,7 +21,7 @@ type AperturePrimitive interface {
 	ApertureMacroDataBlock
 	AperturePrimitivePlaceholder()
 	GetPrimitiveBounds(env *ExpressionEnvironment) (xMin float64, xMax float64, yMin float64, yMax float64)
-	DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64, xOffset float64, yOffset float64) error
+	DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error
 }
 
 type ApertureMacroVariableDefinition struct {

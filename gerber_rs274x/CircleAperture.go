@@ -47,10 +47,10 @@ func (aperture *CircleAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gfx
 func (aperture *CircleAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
 
 	radius := aperture.diameter / 2.0
-	correctedX := ((x - radius) * gfxState.scaleFactor) + gfxState.xOffset
-	correctedY := ((y - radius) * gfxState.scaleFactor) + gfxState.yOffset
+	correctedX := (x - radius) * gfxState.scaleFactor
+	correctedY := (y - radius) * gfxState.scaleFactor
 	
-	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY, 0.0, 0.0)
+	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
 func (aperture *CircleAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
@@ -88,14 +88,14 @@ func (aperture *CircleAperture) StrokeApertureLinear(surface *cairo.Surface, gfx
 		bottomOffsetX := radius * math.Cos(bottomAngle)
 		bottomOffsetY := radius * math.Sin(bottomAngle)
 		
-		topLeftX := ((startX + topOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
-		topLeftY := ((startY + topOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
-		topRightX := ((endX + topOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
-		topRightY := ((endY + topOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
-		bottomLeftX := ((startX + bottomOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
-		bottomLeftY := ((startY + bottomOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
-		bottomRightX := ((endX + bottomOffsetX) * gfxState.scaleFactor) + gfxState.xOffset
-		bottomRightY := ((endY + bottomOffsetY) * gfxState.scaleFactor) + gfxState.yOffset
+		topLeftX := (startX + topOffsetX) * gfxState.scaleFactor
+		topLeftY := (startY + topOffsetY) * gfxState.scaleFactor
+		topRightX := (endX + topOffsetX) * gfxState.scaleFactor
+		topRightY := (endY + topOffsetY) * gfxState.scaleFactor
+		bottomLeftX := (startX + bottomOffsetX) * gfxState.scaleFactor
+		bottomLeftY := (startY + bottomOffsetY) * gfxState.scaleFactor
+		bottomRightX := (endX + bottomOffsetX) * gfxState.scaleFactor
+		bottomRightY := (endY + bottomOffsetY) * gfxState.scaleFactor
 		
 		// Draw the stroke, except for the endpoints
 		surface.MoveTo(topLeftX, topLeftY)
@@ -121,7 +121,7 @@ func (aperture *CircleAperture) StrokeApertureCounterClockwise(surface *cairo.Su
 	return nil
 }
 
-func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *GraphicsState, apertureOffsetX float64, apertureOffsetY float64) {
+func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
