@@ -307,14 +307,10 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 			// Add the new segment to the current surface path
 			switch gfxState.currentInterpolationMode {
 				case LINEAR_INTERPOLATION:
-					correctedX := newX * gfxState.scaleFactor
-					correctedY := newY * gfxState.scaleFactor
-					surface.LineTo(correctedX, correctedY)
+					surface.LineTo(newX, newY)
 				
 				case CIRCULAR_INTERPOLATION_CLOCKWISE:
-					correctedCenterX := centerX * gfxState.scaleFactor
-					correctedCenterY := centerY * gfxState.scaleFactor
-					scaledRadius := math.Hypot(gfxState.currentX - centerX, gfxState.currentY - centerY) * gfxState.scaleFactor
+					radius := math.Hypot(gfxState.currentX - centerX, gfxState.currentY - centerY)
 					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
 						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
 						// TODO: This feels hacky, see if I can come up with a better way to handle this
@@ -323,12 +319,10 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 					
 					// NOTE: The arc direction is relative to the gerber file coordinate frame
 					// The conversion to the cairo coordinate frame is inherent in the y-axis mirror transformation of the surface
-					surface.ArcNegative(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
+					surface.ArcNegative(centerX, centerY, radius, angle1, angle2)
 				
 				case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
-					correctedCenterX := centerX * gfxState.scaleFactor
-					correctedCenterY := centerY * gfxState.scaleFactor
-					scaledRadius := math.Hypot(gfxState.currentX - centerX, gfxState.currentY - centerY) * gfxState.scaleFactor
+					radius := math.Hypot(gfxState.currentX - centerX, gfxState.currentY - centerY)
 					if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
 						// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
 						// TODO: This feels hacky, see if I can come up with a better way to handle this
@@ -337,7 +331,7 @@ func (interpolation *Interpolation) performDrawRegionOn(surface *cairo.Surface, 
 					
 					// NOTE: The arc direction is relative to the gerber file coordinate frame
 					// The conversion to the cairo coordinate frame is inherent in the y-axis mirror transformation of the surface
-					surface.Arc(correctedCenterX, correctedCenterY, scaledRadius, angle1, angle2)
+					surface.Arc(centerX, centerY, radius, angle1, angle2)
 			}
 		
 			gfxState.updateCurrentCoordinate(newX, newY)

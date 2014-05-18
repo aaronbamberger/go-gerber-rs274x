@@ -50,8 +50,8 @@ func (aperture *PolygonAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gf
 func (aperture *PolygonAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
 
 	radius := aperture.outerDiameter / 2.0
-	correctedX := (x - radius) * gfxState.scaleFactor
-	correctedY := (y - radius) * gfxState.scaleFactor
+	correctedX := x - radius
+	correctedY := y - radius
 	
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY) 
 }

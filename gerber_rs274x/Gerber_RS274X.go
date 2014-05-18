@@ -143,7 +143,6 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	
 	fmt.Printf("X Bounds: (%f %f) Y Bounds: (%f %f)\n", bounds.xMin, bounds.xMax, bounds.yMin, bounds.yMax)
 	
-	
 	// Set up the graphics state for the actual drawing
 	gfxState := newGraphicsState(bounds, width, height)
 	
@@ -159,6 +158,10 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	surface.Translate(0.0, float64(-height))
 	// Apply the x and y offsets as translations to the surface
 	surface.Translate(gfxState.xOffset, gfxState.yOffset)
+	
+	//TODO: For testing
+	surface.Save()
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
 	
 	for _,dataBlock := range parsedFile {
 		if err := dataBlock.ProcessDataBlockSurface(surface, gfxState); err != nil {

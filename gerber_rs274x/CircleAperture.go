@@ -47,8 +47,8 @@ func (aperture *CircleAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gfx
 func (aperture *CircleAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
 
 	radius := aperture.diameter / 2.0
-	correctedX := (x - radius) * gfxState.scaleFactor
-	correctedY := (y - radius) * gfxState.scaleFactor
+	correctedX := x - radius
+	correctedY := y - radius
 	
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
@@ -88,14 +88,14 @@ func (aperture *CircleAperture) StrokeApertureLinear(surface *cairo.Surface, gfx
 		bottomOffsetX := radius * math.Cos(bottomAngle)
 		bottomOffsetY := radius * math.Sin(bottomAngle)
 		
-		topLeftX := (startX + topOffsetX) * gfxState.scaleFactor
-		topLeftY := (startY + topOffsetY) * gfxState.scaleFactor
-		topRightX := (endX + topOffsetX) * gfxState.scaleFactor
-		topRightY := (endY + topOffsetY) * gfxState.scaleFactor
-		bottomLeftX := (startX + bottomOffsetX) * gfxState.scaleFactor
-		bottomLeftY := (startY + bottomOffsetY) * gfxState.scaleFactor
-		bottomRightX := (endX + bottomOffsetX) * gfxState.scaleFactor
-		bottomRightY := (endY + bottomOffsetY) * gfxState.scaleFactor
+		topLeftX := startX + topOffsetX
+		topLeftY := startY + topOffsetY
+		topRightX := endX + topOffsetX
+		topRightY := endY + topOffsetY
+		bottomLeftX := startX + bottomOffsetX
+		bottomLeftY := startY + bottomOffsetY
+		bottomRightX := endX + bottomOffsetX
+		bottomRightY := endY + bottomOffsetY
 		
 		// Draw the stroke, except for the endpoints
 		surface.MoveTo(topLeftX, topLeftY)

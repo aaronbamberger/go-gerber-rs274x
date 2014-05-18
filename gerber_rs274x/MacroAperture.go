@@ -73,8 +73,8 @@ func (aperture *MacroAperture) DrawApertureSurface(surface *cairo.Surface, gfxSt
 	radiusX := (aperture.xMax - aperture.xMin) / 2.0
 	radiusY := (aperture.yMax - aperture.yMin) / 2.0
 	
-	correctedX := (x - radiusX) * gfxState.scaleFactor
-	correctedY := (y - radiusY) * gfxState.scaleFactor
+	correctedX := x - radiusX
+	correctedY := y - radiusY
 	
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }

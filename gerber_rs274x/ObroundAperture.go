@@ -49,8 +49,8 @@ func (aperture *ObroundAperture) DrawApertureBoundsCheck(bounds *ImageBounds, gf
 
 func (aperture *ObroundAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
 	
-	correctedX := (x - (aperture.xSize / 2.0)) * gfxState.scaleFactor
-	correctedY := (y - (aperture.ySize / 2.0)) * gfxState.scaleFactor
+	correctedX := x - (aperture.xSize / 2.0)
+	correctedY := y - (aperture.ySize / 2.0)
 	
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }

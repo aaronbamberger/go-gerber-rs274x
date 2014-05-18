@@ -48,8 +48,8 @@ func (aperture *RectangleAperture) DrawApertureBoundsCheck(bounds *ImageBounds, 
 }
 
 func (aperture *RectangleAperture) DrawApertureSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
-	correctedX := (x - (aperture.xSize / 2.0)) * gfxState.scaleFactor
-	correctedY := (y - (aperture.ySize / 2.0)) * gfxState.scaleFactor
+	correctedX := x - (aperture.xSize / 2.0)
+	correctedY := y - (aperture.ySize / 2.0)
 	
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
@@ -91,15 +91,6 @@ func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, 
 		bottomRightY = startY - radiusY
 	}
 
-	scaledTopLeftX := topLeftX * gfxState.scaleFactor
-	scaledTopLeftY := topLeftY * gfxState.scaleFactor
-	scaledTopRightX := topRightX * gfxState.scaleFactor
-	scaledTopRightY := topRightY * gfxState.scaleFactor
-	scaledBottomLeftX := bottomLeftX * gfxState.scaleFactor
-	scaledBottomLeftY := bottomLeftY * gfxState.scaleFactor
-	scaledBottomRightX := bottomRightX * gfxState.scaleFactor
-	scaledBottomRightY := bottomRightY * gfxState.scaleFactor
-
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
 		surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
 	} else {
@@ -107,11 +98,11 @@ func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, 
 	}
 	
 	// Draw the stroke, except for the endpoints
-	surface.MoveTo(scaledTopLeftX, scaledTopLeftY)
-	surface.LineTo(scaledTopRightX, scaledTopRightY)
-	surface.LineTo(scaledBottomRightX, scaledBottomRightY)
-	surface.LineTo(scaledBottomLeftX, scaledBottomLeftY)
-	surface.LineTo(scaledTopLeftX, scaledTopLeftY)
+	surface.MoveTo(topLeftX, topLeftY)
+	surface.LineTo(topRightX, topRightY)
+	surface.LineTo(bottomRightX, bottomRightY)
+	surface.LineTo(bottomLeftX, bottomLeftY)
+	surface.LineTo(topLeftX, topLeftY)
 	surface.Fill()
 	
 	// Draw each of the endpoints by flashing the aperture at the endpoints
