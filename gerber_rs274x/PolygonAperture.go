@@ -71,12 +71,15 @@ func (aperture *PolygonAperture) StrokeApertureCounterClockwise(surface *cairo.S
 func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *GraphicsState) {
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
-	
-	scaledDiameter := aperture.outerDiameter * gfxState.scaleFactor
-	scaledRadius := scaledDiameter / 2.0
+	radius := aperture.outerDiameter / 2.0
 	
 	// Construct the surface we're drawing to
-	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledDiameter)), int(math.Ceil(scaledDiameter)))
+	imageSize := int(math.Ceil(aperture.outerDiameter * gfxState.scaleFactor))
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, imageSize, imageSize)
+	// Scale the surface so we can use unscaled coordinates while rendering the aperture
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
+	// Translate the surface so that the origin is actually the center of the image
+	surface.Translate(radius, radius)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
@@ -91,33 +94,25 @@ func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *Graphic
 	// rotations that we apply
 	surface.Save()
 	
-	// If there's a rotation, convert from the gerber coordinate space
-	// to the cairo coordinate space, and apply the rotation
+	// If there's a rotation, then apply it
 	if (aperture.rotationDegrees != 0.0) {
-		// Translate the origin, because we want to rotate about the center of the aperture
-		surface.Translate(scaledRadius, scaledRadius)
-	
-		// Invert the angle (because gerber file and cairo treat signs of angles opposite of each other)
-		// and convert to radians
+		// Convert the angle to radians
 		correctedAngle := aperture.rotationDegrees * (math.Pi / 180.0)
 		
 		// Perform the rotation
-		surface.Rotate(correctedAngle)
-		
-		// Finally, undo the translation
-		surface.Translate(-scaledRadius, -scaledRadius) 
+		surface.Rotate(correctedAngle) 
 	}
 	
 	// Move to the first vertex (on the x-axis)
-	surface.MoveTo(scaledDiameter, scaledRadius)
+	surface.MoveTo(radius, 0.0)
 	// Draw the edges
 	for i := 1; i < aperture.numVertices; i++ {
-		xOffset := scaledRadius * math.Cos(float64(i) * vertexAngle)
-		yOffset := scaledRadius * math.Sin(float64(i) * vertexAngle)
-		surface.LineTo(scaledRadius + xOffset, scaledRadius + yOffset)
+		xOffset := radius * math.Cos(float64(i) * vertexAngle)
+		yOffset := radius * math.Sin(float64(i) * vertexAngle)
+		surface.LineTo(xOffset, yOffset)
 	}
 	// One final draw to the starting vertex to close the polygon
-	surface.LineTo(scaledDiameter, scaledRadius)
+	surface.LineTo(radius, 0.0)
 	
 	surface.Fill()
 	
@@ -127,7 +122,7 @@ func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *Graphic
 	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		aperture.DrawHoleSurface(surface, gfxState, scaledRadius, scaledRadius)
+		aperture.DrawHoleSurface(surface)
 	}
 	
 	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))

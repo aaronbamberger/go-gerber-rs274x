@@ -20,7 +20,7 @@ type Aperture interface {
 
 type Hole interface {
 	HolePlaceholder()
-	DrawHoleSurface(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error
+	DrawHoleSurface(surface *cairo.Surface) error
 }
 
 func renderApertureToSurface(aperture Aperture, surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {

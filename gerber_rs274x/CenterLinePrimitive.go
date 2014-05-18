@@ -27,7 +27,7 @@ func (primitive *CenterLinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironm
 	return 0.0,0.0,0.0,0.0
 }
 
-func (primitive *CenterLinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
+func (primitive *CenterLinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment) error {
 	//TODO: Implement
 	return nil
 }

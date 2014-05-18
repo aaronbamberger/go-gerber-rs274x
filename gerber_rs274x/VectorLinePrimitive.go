@@ -46,7 +46,7 @@ func (primitive *VectorLinePrimitive) GetPrimitiveBounds(env *ExpressionEnvironm
 	return 0.0,0.0,0.0,0.0
 }
 
-func (primitive *VectorLinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
+func (primitive *VectorLinePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment) error {
 	//TODO: Implement
 	return nil
 }

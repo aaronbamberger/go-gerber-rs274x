@@ -71,11 +71,17 @@ func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *Graphic
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
-	scaledWidth := aperture.xSize * gfxState.scaleFactor
-	scaledHeight := aperture.ySize * gfxState.scaleFactor
+	radiusX := aperture.xSize / 2.0
+	radiusY := aperture.ySize / 2.0
 	
 	// Construct the surface we're drawing to
-	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledWidth)), int(math.Ceil(scaledHeight)))
+	imageWidth := int(math.Ceil(aperture.xSize * gfxState.scaleFactor))
+	imageHeight := int(math.Ceil(aperture.ySize * gfxState.scaleFactor))
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, imageWidth, imageHeight)
+	// Scale the surface so we can use unscaled coordinates while rendering the aperture
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
+	// Translate the surface so that the origin is actually the center of the image
+	surface.Translate(radiusX, radiusY)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
@@ -84,32 +90,27 @@ func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *Graphic
 		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
 	}
 	
-	radiusX := (aperture.xSize / 2.0) * gfxState.scaleFactor
-	radiusY := (aperture.ySize / 2.0) * gfxState.scaleFactor
-	centerX := scaledWidth / 2.0
-	centerY := scaledHeight / 2.0
-	
 	if aperture.xSize < aperture.ySize {
-		rectRadiusY := (scaledHeight - scaledWidth) / 2.0
-		surface.MoveTo(centerX - radiusX, centerY - rectRadiusY)
-		surface.Arc(centerX, centerY - rectRadiusY, radiusX, math.Pi, 0)
-		surface.LineTo(centerX + radiusX, centerY + rectRadiusY)
-		surface.Arc(centerX, centerY + rectRadiusY, radiusX, 0, math.Pi)
-		surface.LineTo(centerX - radiusX, centerY - rectRadiusY)  
+		rectRadiusY := (aperture.ySize - aperture.xSize) / 2.0
+		surface.MoveTo(-radiusX, -rectRadiusY)
+		surface.Arc(0.0, -rectRadiusY, radiusX, math.Pi, 0)
+		surface.LineTo(radiusX, rectRadiusY)
+		surface.Arc(0.0, rectRadiusY, radiusX, 0, math.Pi)
+		surface.LineTo(-radiusX, -rectRadiusY)  
 	} else {
-		rectRadiusX := (scaledWidth - scaledHeight) / 2.0
-		surface.MoveTo(centerX - rectRadiusX, centerY - radiusY)
-		surface.LineTo(centerX + rectRadiusX, centerY - radiusY)
-		surface.Arc(centerX + rectRadiusX, centerY, radiusY, 1.5 * math.Pi, 0.5 * math.Pi)
-		surface.LineTo(centerX - rectRadiusX, centerY + radiusY)
-		surface.Arc(centerX - rectRadiusX, centerY, radiusY, 0.5 * math.Pi, 1.5 * math.Pi)
+		rectRadiusX := (aperture.xSize - aperture.ySize) / 2.0
+		surface.MoveTo(-rectRadiusX, -radiusY)
+		surface.LineTo(rectRadiusX, -radiusY)
+		surface.Arc(rectRadiusX, 0.0, radiusY, 1.5 * math.Pi, 0.5 * math.Pi)
+		surface.LineTo(-rectRadiusX, radiusY)
+		surface.Arc(-rectRadiusX, 0.0, radiusY, 0.5 * math.Pi, 1.5 * math.Pi)
 	}
 	
 	surface.Fill()
 	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		aperture.DrawHoleSurface(surface, gfxState, centerX, centerY)
+		aperture.DrawHoleSurface(surface)
 	}
 	
 	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))

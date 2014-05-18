@@ -125,11 +125,14 @@ func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *Graphics
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
-	scaledDiameter := aperture.diameter * gfxState.scaleFactor
-	
 	// Construct the surface we're drawing to
-	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledDiameter)), int(math.Ceil(scaledDiameter)))
+	imageSize := int(math.Ceil(aperture.diameter * gfxState.scaleFactor))
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, imageSize, imageSize)
 	surface.SetAntialias(cairo.ANTIALIAS_GRAY)
+	// Scale the surface so we can use unscaled coordinates while rendering the aperture
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
+	// Translate the surface so that the origin is actually the center of the image
+	surface.Translate(aperture.diameter / 2.0, aperture.diameter / 2.0)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
@@ -138,16 +141,12 @@ func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *Graphics
 		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
 	}
 	
-	centerX := scaledDiameter / 2.0
-	centerY := scaledDiameter / 2.0
-	radius := scaledDiameter / 2.0
-	
-	surface.Arc(centerX, centerY, radius, 0, 2.0 * math.Pi)
+	surface.Arc(0.0, 0.0, aperture.diameter / 2.0, 0, 2.0 * math.Pi)
 	surface.Fill()
 	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		aperture.DrawHoleSurface(surface, gfxState, centerX, centerY)
+		aperture.DrawHoleSurface(surface)
 	}
 	
 	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))

@@ -95,13 +95,19 @@ func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsS
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
-	xSize := (aperture.xMax - aperture.xMin) * gfxState.scaleFactor
-	ySize := (aperture.yMax - aperture.yMin) * gfxState.scaleFactor
+	rangeX := aperture.xMax - aperture.xMin
+	rangeY := aperture.yMax - aperture.yMin
+	radiusX := rangeX / 2.0
+	radiusY := rangeY / 2.0
 	
 	// Construct the surface we're drawing to
-	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(xSize)), int(math.Ceil(ySize)))
+	imageSizeX := int(math.Ceil(rangeX * gfxState.scaleFactor))
+	imageSizeY := int(math.Ceil(rangeY * gfxState.scaleFactor))
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, imageSizeX, imageSizeY)
+	// Scale the surface so we can use unscaled coordinates in the primitive rendering routines
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
 	// Apply an offset to the surface, so that the origin is actually in the center of the image
-	surface.Translate(xSize / 2.0, ySize / 2.0)
+	surface.Translate(radiusX, radiusY)
 	
 	// Set fill rule to Even/Odd so that rings render correctly
 	surface.SetFillRule(cairo.FILL_RULE_EVEN_ODD)
@@ -128,7 +134,7 @@ func (aperture *MacroAperture) renderApertureToGraphicsState(gfxState *GraphicsS
 					aperture.env.setVariableValue(dataBlockValue.variableNumber, dataBlockValue.value.EvaluateExpression(aperture.env))
 					
 				case AperturePrimitive:
-					if err := dataBlockValue.DrawPrimitiveToSurface(surface, aperture.env, gfxState.scaleFactor); err != nil {
+					if err := dataBlockValue.DrawPrimitiveToSurface(surface, aperture.env); err != nil {
 						// TODO: Figure out the error behavior, just print a warning for now
 						fmt.Printf("Error while attempting to render primitive on macro aperture %s: %s\n", aperture.macroName, err.Error())
 					}		

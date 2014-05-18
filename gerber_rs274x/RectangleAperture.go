@@ -133,12 +133,18 @@ func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *Graph
 	// This will render the aperture to a cairo surface the first time it is needed, then
 	// cache it in the graphics state.  Subsequent draws of the aperture will used the cached surface
 	
-	scaledWidth := aperture.xSize * gfxState.scaleFactor
-	scaledHeight := aperture.ySize * gfxState.scaleFactor
+	radiusX := aperture.xSize / 2.0
+	radiusY := aperture.ySize / 2.0
 	
 	// Construct the surface we're drawing to
-	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, int(math.Ceil(scaledWidth)), int(math.Ceil(scaledHeight)))
+	imageWidth := int(math.Ceil(aperture.xSize * gfxState.scaleFactor))
+	imageHeight := int(math.Ceil(aperture.ySize * gfxState.scaleFactor))
+	surface := cairo.NewSurface(cairo.FORMAT_ARGB32, imageWidth, imageHeight)
 	surface.SetAntialias(cairo.ANTIALIAS_NONE)
+	// Scale the surface so we can use unscaled coordinates while rendering the aperture
+	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
+	// Translate the surface so that the origin is actually the center of the image
+	surface.Translate(radiusX, radiusY)
 	
 	// Draw the aperture
 	if gfxState.currentLevelPolarity == DARK_POLARITY {
@@ -147,20 +153,17 @@ func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *Graph
 		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
 	}
 	
-	
-	surface.MoveTo(0, 0)
-	surface.LineTo(scaledWidth, 0)
-	surface.LineTo(scaledWidth, scaledHeight)
-	surface.LineTo(0, scaledHeight)
-	surface.LineTo(0, 0)
+	surface.MoveTo(-radiusX, radiusY)
+	surface.LineTo(radiusX, radiusY)
+	surface.LineTo(radiusX, -radiusY)
+	surface.LineTo(-radiusX, -radiusY)
+	surface.LineTo(-radiusX, radiusY)
 	
 	surface.Fill()
 	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		centerX := scaledWidth / 2.0
-		centerY := scaledHeight / 2.0
-		aperture.DrawHoleSurface(surface, gfxState, centerX, centerY)
+		aperture.DrawHoleSurface(surface)
 	}
 	
 	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))

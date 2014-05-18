@@ -31,28 +31,27 @@ func (primitive *ThermalPrimitive) GetPrimitiveBounds(env *ExpressionEnvironment
 	return centerX - radius,centerX + radius,centerY - radius,centerY + radius
 }
 
-func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
+func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment) error {
 	// If there is a rotation angle defined, first check that the center is at the origin
 	// (rotations are only allowed if the center is at the origin)
-	centerX := primitive.centerX.EvaluateExpression(env) * scaleFactor
-	centerY := primitive.centerY.EvaluateExpression(env) * scaleFactor
+	centerX := primitive.centerX.EvaluateExpression(env)
+	centerY := primitive.centerY.EvaluateExpression(env)
 	rotation := primitive.rotationAngle.EvaluateExpression(env) * (math.Pi / 180.0)
 	
 	if rotation != 0.0 && (centerX != 0.0 || centerY != 0.0) {
 		return fmt.Errorf("Thermal primitive rotation is only allowed if the center is at the origin")
 	}
 	
-	// Now that we've checked the center, first apply a translation to account for the offset,
-	// then apply the rotation
+	// Now that we've checked the center, apply the rotation
 	surface.Save()
 	surface.Rotate(rotation)
 	
 	surface.SetSourceRGBA(0.0, 0.0, 0.0, 1.0)
 	
 	// Now, draw the thermal
-	outerRadius := (primitive.outerDiameter.EvaluateExpression(env) / 2.0) * scaleFactor
-	innerRadius := (primitive.innerDiameter.EvaluateExpression(env) / 2.0) * scaleFactor
-	halfGapThickness := (primitive.gapThickness.EvaluateExpression(env) / 2.0) * scaleFactor
+	outerRadius := (primitive.outerDiameter.EvaluateExpression(env) / 2.0)
+	innerRadius := (primitive.innerDiameter.EvaluateExpression(env) / 2.0)
+	halfGapThickness := (primitive.gapThickness.EvaluateExpression(env) / 2.0)
 	
 	outerStartX := centerX + halfGapThickness
 	outerStartY := centerY + outerRadius
@@ -71,6 +70,8 @@ func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface
 	// we draw the same shape 4 times, rotating the surface by 90 degrees each time
 	
 	for i := 0; i < 4; i++ {
+		surface.Save()
+	
 		// Rotate the surface
 		surface.Rotate((math.Pi / 2.0) * float64(i))
 	
@@ -81,6 +82,8 @@ func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface
 		surface.Arc(centerX, centerY, innerRadius, innerStartAngle, innerEndAngle)
 		surface.LineTo(outerStartX, outerStartY)
 		surface.Fill()
+		
+		surface.Restore()
 	}
 	
 	// Undo all surface transformations

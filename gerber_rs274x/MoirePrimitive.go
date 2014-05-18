@@ -36,11 +36,11 @@ func (primitive *MoirePrimitive) GetPrimitiveBounds(env *ExpressionEnvironment) 
 	return centerX - maxRadius,centerX + maxRadius,centerY - maxRadius,centerY + maxRadius
 }
 
-func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment, scaleFactor float64) error {
+func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, env *ExpressionEnvironment) error {
 	// If there is a rotation angle defined, first check that the center is at the origin
 	// (rotations are only allowed if the center is at the origin)
-	centerX := primitive.centerX.EvaluateExpression(env) * scaleFactor
-	centerY := primitive.centerY.EvaluateExpression(env) * scaleFactor
+	centerX := primitive.centerX.EvaluateExpression(env)
+	centerY := primitive.centerY.EvaluateExpression(env)
 	rotation := primitive.rotationAngle.EvaluateExpression(env) * (math.Pi / 180.0)
 	
 	if rotation != 0.0 && (centerX != 0.0 || centerY != 0.0) {
@@ -56,9 +56,9 @@ func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, 
 	
 	// Start drawing the rings
 	maxRings := int(primitive.maxRings.EvaluateExpression(env))
-	radius := (primitive.outerDiameter.EvaluateExpression(env) / 2.0) * scaleFactor
-	thickness := primitive.ringThickness.EvaluateExpression(env) * scaleFactor
-	gap := primitive.ringGap.EvaluateExpression(env) * scaleFactor
+	radius := (primitive.outerDiameter.EvaluateExpression(env) / 2.0)
+	thickness := primitive.ringThickness.EvaluateExpression(env)
+	gap := primitive.ringGap.EvaluateExpression(env)
 	for ring := 0; ring < maxRings; ring++ {
 		outerRadius := radius - ((thickness + gap) * float64(ring))
 		innerRadius := outerRadius - thickness
@@ -78,8 +78,8 @@ func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, 
 	}
 	
 	// Now, draw the crosshair
-	crosshairHalfLength := (primitive.crosshairLength.EvaluateExpression(env) / 2.0) * scaleFactor
-	crosshairHalfThickness := (primitive.crosshairThickness.EvaluateExpression(env) / 2.0) * scaleFactor
+	crosshairHalfLength := (primitive.crosshairLength.EvaluateExpression(env) / 2.0)
+	crosshairHalfThickness := (primitive.crosshairThickness.EvaluateExpression(env) / 2.0)
 	horzLeftX := centerX - crosshairHalfLength
 	horzRightX := centerX + crosshairHalfLength
 	horzTopY := centerY + crosshairHalfThickness
