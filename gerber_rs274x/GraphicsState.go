@@ -31,6 +31,11 @@ type GraphicsState struct {
 	// This should provide for some optimization, since the same aperture will
 	// get used over and over to stroke a path
 	renderedApertures map[int]*cairo.Surface
+	// We also need to save apertures rendered without their holes (if they have holes), for use in certain
+	// optimized stroke drawing routines.  If a particular aperture doesn't have a hole, a reference to the same
+	// surface as is stored in the renderedApertures map is stored here, to save on memory.  Else, a new rendered
+	// surface without the hole is stored here
+	renderedAperturesNoHoles map[int]*cairo.Surface
 	
 	// Some of these default to undefined,
 	// so we also need to keep track of when they get defined
@@ -46,6 +51,7 @@ func newGraphicsState(bounds *ImageBounds, xImageSize int, yImageSize int) *Grap
 	graphicsState.currentLevelPolarity = DARK_POLARITY
 	graphicsState.apertures = make(map[int]Aperture, 10) // Start with an initial capacity of 10 apertures, will grow as needed
 	graphicsState.renderedApertures = make(map[int]*cairo.Surface, 10) // Same as above
+	graphicsState.renderedAperturesNoHoles = make(map[int]*cairo.Surface, 10) // Same as above
 	graphicsState.apertureMacros = make(map[string][]ApertureMacroDataBlock, 10) // Same as above
 	
 	if bounds != nil {
@@ -91,7 +97,29 @@ func (gfxState *GraphicsState) updateCurrentCoordinate(newX float64, newY float6
 }
 
 func (gfxState *GraphicsState) releaseRenderedSurfaces() {
-	for _,surface := range gfxState.renderedApertures {
-		surface.Finish()
+
+	// NOTE: For the purposes of this iteration, we assume that the keyset of renderedApertures is a strict superset
+	// of the keyset of renderedAperturesNoHoles (which should always be the case).  If this assumption is broken,
+	// the iteration may miss releasing some surfaces in the renderedAperturesNoHoles map
+	for apertureNumber,surface1 := range gfxState.renderedApertures {
+		if surface2,found := gfxState.renderedAperturesNoHoles[apertureNumber]; found {
+			// This aperture has been rendered into both the holes and no-holes map
+			// Next, we need to check whether both surfaces actually refer to the same object,
+			// and if so, only release it once
+			if surface1 == surface2 {
+				surface1.Finish()
+				surface1.Destroy()
+			} else {
+				// Else, they're two separate objects and we must release them both
+				surface1.Finish()
+				surface1.Destroy()
+				surface2.Finish()
+				surface2.Destroy()
+			}
+		} else {
+			// This aperture was only rendered into the holes map
+			surface1.Finish()
+			surface1.Destroy()
+		}
 	}
 }

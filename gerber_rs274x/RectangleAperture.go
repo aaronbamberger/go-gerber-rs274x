@@ -54,6 +54,13 @@ func (aperture *RectangleAperture) DrawApertureSurface(surface *cairo.Surface, g
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
+func (aperture *RectangleAperture) DrawApertureSurfaceNoHole(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
+	correctedX := x - (aperture.xSize / 2.0)
+	correctedY := y - (aperture.ySize / 2.0)
+	
+	return renderApertureNoHoleToSurface(aperture, surface, gfxState, correctedX, correctedY)
+}
+
 func (aperture *RectangleAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
 	radiusX := aperture.xSize / 2.0
 	radiusY := aperture.ySize / 2.0
@@ -152,14 +159,23 @@ func (aperture *RectangleAperture) renderApertureToGraphicsState(gfxState *Graph
 	
 	surface.Fill()
 	
+	// Save the aperture reference before the hole (if any) is rendered, to the no-holes aperture map
+	gfxState.renderedAperturesNoHoles[aperture.apertureNumber] = surface
+	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		aperture.DrawHoleSurface(surface)
+		// If there's a hole, we need to create a copy surface and draw the hole on the copy
+		newSurface := copyApertureSurface(surface, gfxState, cairo.ANTIALIAS_DEFAULT, gfxState.scaleFactor, radiusX, radiusY)
+		aperture.DrawHoleSurface(newSurface)
+		
+		// Then, we save the rendered aperture with the hole to the graphics state
+		gfxState.renderedApertures[aperture.apertureNumber] = newSurface
+	} else {
+		// If there wasn't a hole, we can save the same surface reference as the no-hole aperture in the aperture map
+		gfxState.renderedApertures[aperture.apertureNumber] = surface
 	}
 	
-	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))
-	
-	gfxState.renderedApertures[aperture.apertureNumber] = surface
+	gfxState.renderedApertures[aperture.apertureNumber].WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))
 }
 
 func (aperture *RectangleAperture) String() string {

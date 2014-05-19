@@ -159,7 +159,9 @@ func GenerateSurface(outFileName string, parsedFile []DataBlock) error {
 	// Apply the x and y offsets as translations to the surface
 	surface.Translate(gfxState.xOffset, gfxState.yOffset)
 	
-	//TODO: For testing
+	// Push the surface state onto the stack before we scale it, so we can selectively remove the scaling later
+	// (used for drawing apertures onto the surface, because apertures are pre-rendered to their own surfaces
+	// and are already scaled, so we don't want to apply scaling twice)
 	surface.Save()
 	surface.Scale(gfxState.scaleFactor, gfxState.scaleFactor)
 	

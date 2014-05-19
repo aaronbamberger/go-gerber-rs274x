@@ -56,6 +56,15 @@ func (aperture *PolygonAperture) DrawApertureSurface(surface *cairo.Surface, gfx
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY) 
 }
 
+func (aperture *PolygonAperture) DrawApertureSurfaceNoHole(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
+
+	radius := aperture.outerDiameter / 2.0
+	correctedX := x - radius
+	correctedY := y - radius
+	
+	return renderApertureNoHoleToSurface(aperture, surface, gfxState, correctedX, correctedY) 
+}
+
 func (aperture *PolygonAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
 	return nil
 }
@@ -120,14 +129,23 @@ func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *Graphic
 	// (holes aren't affected by rotation)
 	surface.Restore()
 	
+	// Save the aperture reference before the hole (if any) is rendered, to the no-holes aperture map
+	gfxState.renderedAperturesNoHoles[aperture.apertureNumber] = surface
+	
 	// If present, remove the hole
 	if aperture.Hole != nil {
-		aperture.DrawHoleSurface(surface)
+		// If there's a hole, we need to create a copy surface and draw the hole on the copy
+		newSurface := copyApertureSurface(surface, gfxState, cairo.ANTIALIAS_DEFAULT, gfxState.scaleFactor, radius, radius)
+		aperture.DrawHoleSurface(newSurface)
+		
+		// Then, we save the rendered aperture with the hole to the graphics state
+		gfxState.renderedApertures[aperture.apertureNumber] = newSurface
+	} else {
+		// If there wasn't a hole, we can save the same surface reference as the no-hole aperture in the aperture map
+		gfxState.renderedApertures[aperture.apertureNumber] = surface
 	}
 	
-	surface.WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))
-	
-	gfxState.renderedApertures[aperture.apertureNumber] = surface
+	gfxState.renderedApertures[aperture.apertureNumber].WriteToPNG(fmt.Sprintf("Aperture-%d.png", aperture.apertureNumber))
 }
 
 func (aperture *PolygonAperture) String() string {

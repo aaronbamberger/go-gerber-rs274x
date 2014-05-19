@@ -135,13 +135,9 @@ func (interpolation *Interpolation) ProcessDataBlockBoundsCheck(bounds *ImageBou
 						}
 					}
 				}
-				
-			case MOVE_OPERATION:
-				// Since this is just a move, the mins and maxes are the same
-				bounds.updateBounds(newX, newX, newY, newY)
-				gfxState.updateCurrentCoordinate(newX, newY)
 			
-			case FLASH_OPERATION:
+			case MOVE_OPERATION, FLASH_OPERATION:
+				// For bounds checking, we treat moves and flashes the same
 				if !gfxState.apertureSet {
 					return fmt.Errorf("Attempt to check interpolation bounds before aperture set")
 				}
@@ -192,7 +188,7 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 			if aperture,found := gfxState.apertures[gfxState.currentAperture]; !found {
 				return fmt.Errorf("Attempt to use aperture %d before it has been defined", gfxState.currentAperture)
 			} else {
-				apertureMinSize := aperture.GetMinSize(gfxState)
+				//apertureMinSize := aperture.GetMinSize(gfxState)
 				
 				switch gfxState.currentInterpolationMode {
 					case LINEAR_INTERPOLATION:
@@ -223,11 +219,17 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 						gfxState.updateCurrentCoordinate(newX, newY)
 						
 					case CIRCULAR_INTERPOLATION_CLOCKWISE:
-						if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-							// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-							// TODO: This feels hacky, see if I can come up with a better way to handle this
-							angle2 -= (2.0 * math.Pi)
+						if gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE {
+							// If we're in multi-quadrant mode, we may need to adjust the end angle by 2 pi so that the angle spans come out right
+							if epsilonEquals(angle1, angle2, gfxState.filePrecision) {
+								// If the angles are equal, we're drawing a full circle, so process the end angle by 2 pi in the proper direction
+								angle2 -= (2.0 * math.Pi)
+							} else if angle2 > angle1 {
+								// If the end angle is greater than the start angle, we process the end angle by 2 pi in the proper direction
+								angle2 += (2.0 * math.Pi)
+							}
 						}
+						/*
 						radius := math.Hypot(newX - centerX, newY - centerY)
 						angleStep := apertureMinSize / radius
 						
@@ -246,16 +248,25 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
 						}
+						*/
+						radius := math.Hypot(newX - centerX, newY - centerY)
+						aperture.StrokeApertureClockwise(surface, gfxState, centerX, centerY, radius, angle1, angle2)
 						
 						// Finally, update the graphics state with the new end coordinate
 						gfxState.updateCurrentCoordinate(newX, newY)
 					
 					case CIRCULAR_INTERPOLATION_COUNTER_CLOCKWISE:
-						if epsilonEquals(angle1, angle2, gfxState.filePrecision) && (gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE) {
-							// NOTE: Special case, if the angles are equal, and we're in multi quadrant mode, we're drawing a full circle
-							// TODO: This feels hacky, see if I can come up with a better way to handle this
-							angle2 += (2.0 * math.Pi)
+						if gfxState.currentQuadrantMode == MULTI_QUADRANT_MODE {
+							// If we're in multi-quadrant mode, we may need to adjust the end angle by 2 pi so that the angle spans come out right
+							if epsilonEquals(angle1, angle2, gfxState.filePrecision) {
+								// If the angles are equal, we're drawing a full circle, so process the end angle by 2 pi in the proper direction
+								angle2 += (2.0 * math.Pi)
+							} else if angle1 > angle2 {
+								// If the end angle is greater than the start angle, we process the end angle by 2 pi in the proper direction
+								angle2 += (2.0 * math.Pi)
+							}
 						}
+						/*
 						radius := math.Hypot(newX - centerX, newY - centerY)
 						angleStep := apertureMinSize / radius
 						
@@ -274,6 +285,10 @@ func (interpolation *Interpolation) performDrawRegionOff(surface *cairo.Surface,
 						if err := aperture.DrawApertureSurface(surface, gfxState, newX, newY); err != nil {
 							return err
 						}
+						*/
+						fmt.Printf("Center: (%f %f)\n", centerX, centerY)
+						radius := math.Hypot(newX - centerX, newY - centerY)
+						aperture.StrokeApertureCounterClockwise(surface, gfxState, centerX, centerY, radius, angle1, angle2)
 						
 						// Finally, update the graphics state with the new end coordinate
 						gfxState.updateCurrentCoordinate(newX, newY)
@@ -402,6 +417,8 @@ func (interpolation *Interpolation) getNewCoordinate(gfxState *GraphicsState) (n
 							angle2 := math.Atan2(newY - y, newX - x)
 							theta := angle2 - angle1
 							
+							fmt.Printf("For center (%f %f), Angle1 = %f, Angle2 = %f, Theta = %f\n", x, y, angle1, angle2, theta)
+							
 							if math.Abs(theta) <= (math.Pi / 2.0) {
 								// If the angle is <= 90 degrees, check whether it's the correct direction
 								// for the current interpolation mode.  If it is, we've found the correct center, so return
@@ -427,6 +444,9 @@ func (interpolation *Interpolation) getNewCoordinate(gfxState *GraphicsState) (n
 					angle1 := math.Atan2(gfxState.currentY - arcCenterY, gfxState.currentX - arcCenterX)
 					angle2 := math.Atan2(newY - arcCenterY, newX - arcCenterX)
 					return newX,newY,arcCenterX,arcCenterY,angle1,angle2
+					
+				default:
+					fmt.Printf("ERROR: No quadrant mode set\n")
 			}
 	}
 	

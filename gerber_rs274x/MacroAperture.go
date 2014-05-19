@@ -79,6 +79,16 @@ func (aperture *MacroAperture) DrawApertureSurface(surface *cairo.Surface, gfxSt
 	return renderApertureToSurface(aperture, surface, gfxState, correctedX, correctedY)
 }
 
+func (aperture *MacroAperture) DrawApertureSurfaceNoHole(surface *cairo.Surface, gfxState *GraphicsState, x float64, y float64) error {
+	radiusX := (aperture.xMax - aperture.xMin) / 2.0
+	radiusY := (aperture.yMax - aperture.yMin) / 2.0
+	
+	correctedX := x - radiusX
+	correctedY := y - radiusY
+	
+	return renderApertureNoHoleToSurface(aperture, surface, gfxState, correctedX, correctedY)
+}
+
 func (aperture *MacroAperture) StrokeApertureLinear(surface *cairo.Surface, gfxState *GraphicsState, startX float64, startY float64, endX float64, endY float64) error {
 	return nil
 }
