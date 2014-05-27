@@ -2,7 +2,6 @@ package gerber_rs274x
 
 import (
 	"fmt"
-	"math"
 	cairo "github.com/ungerik/go-cairo"
 )
 
@@ -26,7 +25,7 @@ func (hole *CircularHole) DrawHoleSurface(surface *cairo.Surface) error {
 	
 	// We temporarily set the compositing operator to clear, to clear the hole to transparent
 	surface.SetOperator(cairo.OPERATOR_CLEAR)
-	surface.Arc(0.0, 0.0, radius, 0, 2.0 * math.Pi)
+	surface.Arc(0.0, 0.0, radius, 0, TWO_PI)
 	surface.Fill()
 	
 	surface.Restore()

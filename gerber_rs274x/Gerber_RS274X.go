@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"regexp"
+	"math"
 	cairo "github.com/ungerik/go-cairo"
 )
 
@@ -17,6 +18,10 @@ var fsParameterRegex *regexp.Regexp
 var srParameterRegex *regexp.Regexp
 var adParameterRegex *regexp.Regexp
 var amVariableDefinitionRegex *regexp.Regexp
+
+const ONE_HALF_PI = (math.Pi / 2.0)
+const THREE_HALVES_PI = ((math.Pi * 3.0) / 2.0)
+const TWO_PI = (math.Pi * 2.0)
 
 type ParseState int
 

@@ -73,7 +73,7 @@ func (primitive *ThermalPrimitive) DrawPrimitiveToSurface(surface *cairo.Surface
 		surface.Save()
 	
 		// Rotate the surface
-		surface.Rotate((math.Pi / 2.0) * float64(i))
+		surface.Rotate(ONE_HALF_PI * float64(i))
 	
 		//Draw one piece of the primitive
 		surface.MoveTo(outerStartX, outerStartY)

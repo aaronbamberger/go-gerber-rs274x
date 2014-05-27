@@ -2,6 +2,34 @@ package gerber_rs274x
 
 import "math"
 
+type Quadrant int
+
+const (
+	QUADRANT_1 Quadrant = iota
+	QUADRANT_2
+	QUADRANT_3
+	QUADRANT_4
+)
+
+func inQuadrant(angle float64, quadrant Quadrant) bool {
+	switch quadrant {
+		case QUADRANT_1:
+			return (angle >= 0.0) && (angle <= ONE_HALF_PI)
+			
+		case QUADRANT_2:
+			return (angle >= ONE_HALF_PI) && (angle <= math.Pi)
+			
+		case QUADRANT_3:
+			return (angle >= -math.Pi) && (angle <= -ONE_HALF_PI)
+			
+		case QUADRANT_4:
+			return (angle >= -ONE_HALF_PI) && (angle <= 0.0)
+		
+		default:
+			return false
+	}
+}
+
 func epsilonEquals(x float64, y float64, drawPrecision float64) bool {
 	epsilon := drawPrecision / math.Pow10(3) // arbitrarily making epsilon 3 orders of magnitude smaller than the drawing precision
 	return math.Abs(x - y) < epsilon
@@ -13,15 +41,15 @@ func convertAngleBetweenCoordinateFrames(angle float64) (convertedAngle float64)
 	// into the gerber coordinate frame
 	
 	// First, we subtract the given angle from 360 to swap the sign on the y axis
-	angle = (2.0 * math.Pi) - angle
+	angle = TWO_PI - angle
 	
 	// We then normalize the angle to between 0 and 360
-	for angle > (2.0 * math.Pi) {
-		angle -= (2.0 * math.Pi)
+	for angle > TWO_PI {
+		angle -= TWO_PI
 	}
 	
 	for angle < 0 {
-		angle += (2.0 * math.Pi)
+		angle += TWO_PI
 	}
 	
 	return angle

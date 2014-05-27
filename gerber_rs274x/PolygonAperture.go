@@ -97,7 +97,7 @@ func (aperture *PolygonAperture) renderApertureToGraphicsState(gfxState *Graphic
 		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
 	}
 	
-	vertexAngle := (2.0 * math.Pi) / float64(aperture.numVertices)
+	vertexAngle := TWO_PI / float64(aperture.numVertices)
 	
 	// Save the current surface state so we can undo any
 	// rotations that we apply

@@ -64,11 +64,11 @@ func (primitive *MoirePrimitive) DrawPrimitiveToSurface(surface *cairo.Surface, 
 		innerRadius := outerRadius - thickness
 		
 		// Draw the outer portion of the ring
-		surface.Arc(centerX, centerY, outerRadius, 0.0, 2.0 * math.Pi)
+		surface.Arc(centerX, centerY, outerRadius, 0.0, TWO_PI)
 		
 		if innerRadius > 0.0 {
 			// Draw the inner portion of the ring
-			surface.Arc(centerX, centerY, innerRadius, 0.0, 2.0 * math.Pi)
+			surface.Arc(centerX, centerY, innerRadius, 0.0, TWO_PI)
 			surface.Fill()
 		} else {
 			// We've reached the center, so fill the surface and break out of the loop

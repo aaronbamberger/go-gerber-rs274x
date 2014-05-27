@@ -107,9 +107,9 @@ func (aperture *ObroundAperture) renderApertureToGraphicsState(gfxState *Graphic
 		rectRadiusX := (aperture.xSize - aperture.ySize) / 2.0
 		surface.MoveTo(-rectRadiusX, -radiusY)
 		surface.LineTo(rectRadiusX, -radiusY)
-		surface.Arc(rectRadiusX, 0.0, radiusY, 1.5 * math.Pi, 0.5 * math.Pi)
+		surface.Arc(rectRadiusX, 0.0, radiusY, THREE_HALVES_PI, ONE_HALF_PI)
 		surface.LineTo(-rectRadiusX, radiusY)
-		surface.Arc(-rectRadiusX, 0.0, radiusY, 0.5 * math.Pi, 1.5 * math.Pi)
+		surface.Arc(-rectRadiusX, 0.0, radiusY, ONE_HALF_PI, THREE_HALVES_PI)
 	}
 	
 	surface.Fill()

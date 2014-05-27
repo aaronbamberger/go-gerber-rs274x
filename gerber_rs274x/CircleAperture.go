@@ -88,8 +88,8 @@ func (aperture *CircleAperture) StrokeApertureLinear(surface *cairo.Surface, gfx
 	} else {
 		// Else, we can optimize by drawing a line the thickness of the aperture diameter between the two points, then flashing the
 		// aperture at each end to get the endcaps correct
-		topAngle := strokeAngle + (math.Pi / 2.0)
-		bottomAngle := strokeAngle - (math.Pi / 2.0)
+		topAngle := strokeAngle + ONE_HALF_PI
+		bottomAngle := strokeAngle - ONE_HALF_PI
 		topOffsetX := radius * math.Cos(topAngle)
 		topOffsetY := radius * math.Sin(topAngle)
 		bottomOffsetX := radius * math.Cos(bottomAngle)
@@ -168,7 +168,6 @@ func (aperture *CircleAperture) StrokeApertureClockwise(surface *cairo.Surface, 
 		// have been covered over by the rest of the aperture during the stroke
 		aperture.DrawApertureSurfaceNoHole(surface, gfxState, startX, startY)
 		aperture.DrawApertureSurfaceNoHole(surface, gfxState, endX, endY)
-		aperture.DrawApertureSurfaceNoHole(surface, gfxState, centerX, centerY)
 		
 		fmt.Printf("Center (%f %f), Start (%f %f), End (%f %f)\n", centerX, centerY, startX, startY, endX, endY)
 	}
@@ -221,13 +220,13 @@ func (aperture *CircleAperture) StrokeApertureCounterClockwise(surface *cairo.Su
 		surface.Fill()
 		
 		// Draw each of the endpoints by flashing the aperture at the endpoints
-		//startX := centerX + (radius * math.Cos(startAngle))
-		//startY := centerY + (radius * math.Sin(startAngle))
+		startX := centerX + (radius * math.Cos(startAngle))
+		startY := centerY + (radius * math.Sin(startAngle))
 		endX := centerX + (radius * math.Cos(endAngle))
 		endY := centerY + (radius * math.Sin(endAngle))
 		// We use the special "no hole" version of the draw, because any holes will
 		// have been covered over by the rest of the aperture during the stroke
-		//aperture.DrawApertureSurfaceNoHole(surface, gfxState, startX, startY)
+		aperture.DrawApertureSurfaceNoHole(surface, gfxState, startX, startY)
 		aperture.DrawApertureSurfaceNoHole(surface, gfxState, endX, endY)
 	}
 	
@@ -257,7 +256,7 @@ func (aperture *CircleAperture) renderApertureToGraphicsState(gfxState *Graphics
 		surface.SetSourceRGBA(1.0, 1.0, 1.0, 1.0)
 	}
 	
-	surface.Arc(0.0, 0.0, aperture.diameter / 2.0, 0, 2.0 * math.Pi)
+	surface.Arc(0.0, 0.0, aperture.diameter / 2.0, 0, TWO_PI)
 	surface.Fill()
 	
 	// Save the aperture reference before the hole (if any) is rendered, to the no-holes aperture map
